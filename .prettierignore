@@ -1,0 +1,10 @@
+.next
+node_modules
+playwright-report
+test-results
+coverage
+tmp
+output
+docs/architecture.svg
+package-lock.json
+public/*.svg

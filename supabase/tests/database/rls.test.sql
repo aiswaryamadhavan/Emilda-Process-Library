@@ -1,0 +1,18 @@
+begin;
+select plan(9);
+set local role authenticated;
+select set_config('request.jwt.claim.sub','20000000-0000-4000-8000-000000000006',true);
+select is((select count(*) from public.processes where tenant_id='10000000-0000-4000-8000-000000000002'),0::bigint,'Tenant A cannot read Tenant B processes');
+select is((select count(*) from public.search_documents where tenant_id='10000000-0000-4000-8000-000000000002'),0::bigint,'Search does not leak Tenant B');
+select is((select count(*) from public.tenant_profiles where tenant_id='10000000-0000-4000-8000-000000000002'),0::bigint,'Client profile does not leak Tenant B');
+select is((select count(*) from public.tenant_profiles where tenant_id='10000000-0000-4000-8000-000000000001'),1::bigint,'Authorized member can read own tenant client profile');
+select is((select count(*) from storage.objects where bucket_id='evidence'),0::bigint,'Private evidence has no direct client read policy');
+select set_config('request.jwt.claim.sub','20000000-0000-4000-8000-000000000002',true);
+select throws_ok($$update public.process_versions set purpose='tamper' where id='60000000-0000-4000-8000-000000000001'$$,'Approved process versions cannot be edited','Active version content is immutable');
+select throws_ok($$insert into public.process_nodes (tenant_id,process_id,version_id,node_key,node_type,title) values ('10000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000001','late','ACTION','Late edit')$$,'Approved process version content is immutable','Cannot add content to active version');
+select throws_ok($$update public.audit_items set comment='tamper' where id='81000000-0000-4000-8000-000000000001'$$,'Completed audit items are immutable','Historical audit item is immutable');
+set local role service_role;
+insert into public.process_versions(id,tenant_id,process_id,major_version,minor_version,status,change_reason,created_by) values('6f000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000001',99,0,'DRAFT','Isolation test','20000000-0000-4000-8000-000000000001');
+select throws_ok($$insert into public.process_nodes (tenant_id,process_id,version_id,node_key,node_type,title) values ('10000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000004','6f000000-0000-4000-8000-000000000001','x','ACTION','Cross tenant')$$,'23503',null,'Cross-tenant composite foreign keys reject mismatched parents');
+select * from finish();
+rollback;

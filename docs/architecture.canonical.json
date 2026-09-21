@@ -1,0 +1,300 @@
+{
+  "version": 2,
+  "title": "Emilda Governance OS architecture and core data model",
+  "description": "Portable editable diagrams for the V1 deployment and tenant-scoped governance model.",
+  "diagrams": [
+    {
+      "id": "deployment_architecture",
+      "title": "One deployment, isolated tenant data",
+      "kind": "flowchart",
+      "accessibility": "Users enter through tenant subdomains. Next.js resolves tenant and authenticates the user. User-scoped Supabase calls enforce RLS. Private evidence is served with short-lived signed URLs. Optional AI receives only RLS-filtered snippets.",
+      "data": {
+        "direction": "LR",
+        "nodes": [
+          { "id": "user", "label": "Tenant user" },
+          { "id": "vercel", "label": "Vercel wildcard edge" },
+          { "id": "next", "label": "Next.js App Router" },
+          { "id": "auth", "label": "Supabase Auth" },
+          { "id": "postgres", "label": "PostgreSQL + forced RLS" },
+          { "id": "storage", "label": "Private evidence storage" },
+          { "id": "openai", "label": "Optional OpenAI Responses API" },
+          { "id": "cron", "label": "Protected hourly cron" }
+        ],
+        "edges": [
+          {
+            "from": "user",
+            "to": "vercel",
+            "label": "client.emildaos.com",
+            "arrow": "-->"
+          },
+          {
+            "from": "vercel",
+            "to": "next",
+            "label": "tenant header",
+            "arrow": "-->"
+          },
+          {
+            "from": "next",
+            "to": "auth",
+            "label": "cookie session",
+            "arrow": "-->"
+          },
+          {
+            "from": "next",
+            "to": "postgres",
+            "label": "user-scoped queries",
+            "arrow": "-->"
+          },
+          {
+            "from": "next",
+            "to": "storage",
+            "label": "60-second signed access",
+            "arrow": "-->"
+          },
+          {
+            "from": "next",
+            "to": "openai",
+            "label": "authorized snippets only",
+            "arrow": "-->"
+          },
+          {
+            "from": "cron",
+            "to": "next",
+            "label": "Bearer secret",
+            "arrow": "-->"
+          },
+          {
+            "from": "postgres",
+            "to": "storage",
+            "label": "tenant attachment metadata",
+            "arrow": "---"
+          }
+        ]
+      }
+    },
+    {
+      "id": "governance_loop",
+      "title": "Governance improvement loop",
+      "kind": "flowchart",
+      "accessibility": "A process is designed, approved, released, run by its owner, audited, and improved through issues and change requests. Approved change requests create a new draft and repeat the approval path.",
+      "data": {
+        "direction": "LR",
+        "nodes": [
+          { "id": "design", "label": "Design draft" },
+          { "id": "approve", "label": "Owner approval" },
+          { "id": "release", "label": "Process release" },
+          { "id": "run", "label": "Owner runs process" },
+          { "id": "audit", "label": "Guardian audit" },
+          { "id": "issue", "label": "Issue + root cause" },
+          { "id": "change", "label": "Change request" },
+          { "id": "version", "label": "New draft version" }
+        ],
+        "edges": [
+          {
+            "from": "design",
+            "to": "approve",
+            "label": "submit",
+            "arrow": "-->"
+          },
+          {
+            "from": "approve",
+            "to": "release",
+            "label": "approved",
+            "arrow": "-->"
+          },
+          {
+            "from": "release",
+            "to": "run",
+            "label": "go live",
+            "arrow": "-->"
+          },
+          { "from": "run", "to": "audit", "label": "evidence", "arrow": "-->" },
+          {
+            "from": "audit",
+            "to": "issue",
+            "label": "failure detected",
+            "arrow": "-->"
+          },
+          {
+            "from": "issue",
+            "to": "change",
+            "label": "process should change",
+            "arrow": "-->"
+          },
+          {
+            "from": "change",
+            "to": "version",
+            "label": "approved",
+            "arrow": "-->"
+          },
+          {
+            "from": "version",
+            "to": "design",
+            "label": "edit safely",
+            "arrow": "-->"
+          }
+        ]
+      }
+    },
+    {
+      "id": "core_data_model",
+      "title": "Core tenant-scoped data model",
+      "kind": "er",
+      "accessibility": "Every business record belongs to one tenant. Processes own immutable versions, graph content, releases, audits, issues, and improvements.",
+      "data": {
+        "entities": [
+          { "id": "TENANT", "attributes": ["uuid id PK", "text slug UK"] },
+          {
+            "id": "MEMBERSHIP",
+            "attributes": ["uuid id PK", "uuid tenant_id FK", "uuid user_id FK"]
+          },
+          {
+            "id": "PROCESS",
+            "attributes": [
+              "uuid id PK",
+              "uuid tenant_id FK",
+              "uuid active_version_id FK"
+            ]
+          },
+          {
+            "id": "VERSION",
+            "attributes": [
+              "uuid id PK",
+              "uuid tenant_id FK",
+              "uuid process_id FK",
+              "status immutable_after_approval"
+            ]
+          },
+          {
+            "id": "NODE",
+            "attributes": [
+              "uuid id PK",
+              "uuid tenant_id FK",
+              "uuid version_id FK"
+            ]
+          },
+          {
+            "id": "EDGE",
+            "attributes": [
+              "uuid id PK",
+              "uuid tenant_id FK",
+              "uuid version_id FK"
+            ]
+          },
+          {
+            "id": "RELEASE",
+            "attributes": ["uuid id PK", "jsonb snapshot", "text snapshot_hash"]
+          },
+          {
+            "id": "APPROVAL",
+            "attributes": ["uuid id PK", "int content_revision", "status"]
+          },
+          {
+            "id": "AUDIT",
+            "attributes": ["uuid id PK", "uuid version_id FK", "health score"]
+          },
+          {
+            "id": "ISSUE",
+            "attributes": ["uuid id PK", "uuid process_id FK", "root_cause"]
+          },
+          {
+            "id": "CHANGE_REQUEST",
+            "attributes": ["uuid id PK", "uuid created_version_id FK", "status"]
+          },
+          {
+            "id": "ATTACHMENT",
+            "attributes": [
+              "uuid id PK",
+              "uuid tenant_id FK",
+              "private object_path"
+            ]
+          },
+          {
+            "id": "ACTIVITY_LOG",
+            "attributes": ["uuid id PK", "uuid tenant_id FK", "immutable event"]
+          }
+        ],
+        "relationships": [
+          {
+            "from": "TENANT",
+            "to": "MEMBERSHIP",
+            "cardinality": "||--o{",
+            "label": "has"
+          },
+          {
+            "from": "TENANT",
+            "to": "PROCESS",
+            "cardinality": "||--o{",
+            "label": "owns"
+          },
+          {
+            "from": "PROCESS",
+            "to": "VERSION",
+            "cardinality": "||--o{",
+            "label": "versions"
+          },
+          {
+            "from": "VERSION",
+            "to": "NODE",
+            "cardinality": "||--o{",
+            "label": "steps"
+          },
+          {
+            "from": "VERSION",
+            "to": "EDGE",
+            "cardinality": "||--o{",
+            "label": "connections"
+          },
+          {
+            "from": "VERSION",
+            "to": "APPROVAL",
+            "cardinality": "||--o{",
+            "label": "requires"
+          },
+          {
+            "from": "VERSION",
+            "to": "RELEASE",
+            "cardinality": "||--o|",
+            "label": "snapshots"
+          },
+          {
+            "from": "VERSION",
+            "to": "AUDIT",
+            "cardinality": "||--o{",
+            "label": "audited_as"
+          },
+          {
+            "from": "PROCESS",
+            "to": "ISSUE",
+            "cardinality": "||--o{",
+            "label": "reveals"
+          },
+          {
+            "from": "ISSUE",
+            "to": "CHANGE_REQUEST",
+            "cardinality": "o{--o{",
+            "label": "supports"
+          },
+          {
+            "from": "CHANGE_REQUEST",
+            "to": "VERSION",
+            "cardinality": "o|--o|",
+            "label": "creates"
+          },
+          {
+            "from": "PROCESS",
+            "to": "ATTACHMENT",
+            "cardinality": "||--o{",
+            "label": "secures"
+          },
+          {
+            "from": "TENANT",
+            "to": "ACTIVITY_LOG",
+            "cardinality": "||--o{",
+            "label": "records"
+          }
+        ]
+      }
+    }
+  ]
+}

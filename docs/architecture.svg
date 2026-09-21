@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="3172" viewBox="0 0 960 3172">
+<rect width="100%" height="100%" fill="#0b1020"/>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif} .title{font-size:22px;font-weight:700;fill:#f4f7ff}.meta{font-size:12px;fill:#9fb0d0}.node{fill:#18233d;stroke:#71d7ff;stroke-width:1.5}.label{font-size:14px;fill:#f7fbff}.edge{stroke:#b984ff;stroke-width:2;fill:none}.edgeLabel{font-size:11px;fill:#dbc8ff}</style>
+<text class="title" x="32" y="36">Emilda Governance OS architecture and core data model</text>
+<rect x="24" y="62" width="912" height="856" rx="18" fill="#10182b" stroke="#253556"/>
+<text class="title" x="48" y="96">One deployment, isolated tenant data</text>
+<text class="meta" x="48" y="116">flowchart · structural preview · static evidence</text>
+<rect class="node" x="64" y="140" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="169">Tenant user</text>
+<rect class="node" x="516" y="140" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="169">Vercel wildcard edge</text>
+<rect class="node" x="64" y="216" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="245">Next.js App Router</text>
+<rect class="node" x="516" y="216" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="245">Supabase Auth</text>
+<rect class="node" x="64" y="292" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="321">PostgreSQL + forced RLS</text>
+<rect class="node" x="516" y="292" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="321">Private evidence storage</text>
+<rect class="node" x="64" y="368" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="397">Optional OpenAI Responses API</text>
+<rect class="node" x="516" y="368" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="397">Protected hourly cron</text>
+<path class="edge" d="M254,188 L254,452 L706,452 L706,140"/>
+<text class="edgeLabel" x="48" y="466">client.emildaos.com</text>
+<path class="edge" d="M706,188 L706,474 L254,474 L254,216"/>
+<text class="edgeLabel" x="48" y="488">tenant header</text>
+<path class="edge" d="M254,264 L254,496 L706,496 L706,216"/>
+<text class="edgeLabel" x="48" y="510">cookie session</text>
+<path class="edge" d="M254,264 L254,518 L254,518 L254,292"/>
+<text class="edgeLabel" x="48" y="532">user-scoped queries</text>
+<path class="edge" d="M254,264 L254,540 L706,540 L706,292"/>
+<text class="edgeLabel" x="48" y="554">60-second signed access</text>
+<path class="edge" d="M254,264 L254,562 L254,562 L254,368"/>
+<text class="edgeLabel" x="48" y="576">authorized snippets only</text>
+<path class="edge" d="M706,416 L706,584 L254,584 L254,216"/>
+<text class="edgeLabel" x="48" y="598">Bearer secret</text>
+<path class="edge" d="M254,340 L254,606 L706,606 L706,292"/>
+<text class="edgeLabel" x="48" y="620">tenant attachment metadata</text>
+<rect x="24" y="938" width="912" height="856" rx="18" fill="#10182b" stroke="#253556"/>
+<text class="title" x="48" y="972">Governance improvement loop</text>
+<text class="meta" x="48" y="992">flowchart · structural preview · static evidence</text>
+<rect class="node" x="64" y="1016" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="1045">Design draft</text>
+<rect class="node" x="516" y="1016" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="1045">Owner approval</text>
+<rect class="node" x="64" y="1092" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="1121">Process release</text>
+<rect class="node" x="516" y="1092" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="1121">Owner runs process</text>
+<rect class="node" x="64" y="1168" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="1197">Guardian audit</text>
+<rect class="node" x="516" y="1168" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="1197">Issue + root cause</text>
+<rect class="node" x="64" y="1244" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="1273">Change request</text>
+<rect class="node" x="516" y="1244" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="1273">New draft version</text>
+<path class="edge" d="M254,1064 L254,1328 L706,1328 L706,1016"/>
+<text class="edgeLabel" x="48" y="1342">submit</text>
+<path class="edge" d="M706,1064 L706,1350 L254,1350 L254,1092"/>
+<text class="edgeLabel" x="48" y="1364">approved</text>
+<path class="edge" d="M254,1140 L254,1372 L706,1372 L706,1092"/>
+<text class="edgeLabel" x="48" y="1386">go live</text>
+<path class="edge" d="M706,1140 L706,1394 L254,1394 L254,1168"/>
+<text class="edgeLabel" x="48" y="1408">evidence</text>
+<path class="edge" d="M254,1216 L254,1416 L706,1416 L706,1168"/>
+<text class="edgeLabel" x="48" y="1430">failure detected</text>
+<path class="edge" d="M706,1216 L706,1438 L254,1438 L254,1244"/>
+<text class="edgeLabel" x="48" y="1452">process should change</text>
+<path class="edge" d="M254,1292 L254,1460 L706,1460 L706,1244"/>
+<text class="edgeLabel" x="48" y="1474">approved</text>
+<path class="edge" d="M706,1292 L706,1482 L254,1482 L254,1016"/>
+<text class="edgeLabel" x="48" y="1496">edit safely</text>
+<rect x="24" y="1814" width="912" height="1346" rx="18" fill="#10182b" stroke="#253556"/>
+<text class="title" x="48" y="1848">Core tenant-scoped data model</text>
+<text class="meta" x="48" y="1868">er · structural preview · static evidence</text>
+<rect class="node" x="64" y="1892" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="1921">TENANT</text>
+<rect class="node" x="516" y="1892" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="1921">MEMBERSHIP</text>
+<rect class="node" x="64" y="1968" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="1997">PROCESS</text>
+<rect class="node" x="516" y="1968" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="1997">VERSION</text>
+<rect class="node" x="64" y="2044" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="2073">NODE</text>
+<rect class="node" x="516" y="2044" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="2073">EDGE</text>
+<rect class="node" x="64" y="2120" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="2149">RELEASE</text>
+<rect class="node" x="516" y="2120" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="2149">APPROVAL</text>
+<rect class="node" x="64" y="2196" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="2225">AUDIT</text>
+<rect class="node" x="516" y="2196" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="2225">ISSUE</text>
+<rect class="node" x="64" y="2272" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="2301">CHANGE_REQUEST</text>
+<rect class="node" x="516" y="2272" width="380" height="48" rx="10"/>
+<text class="label" x="532" y="2301">ATTACHMENT</text>
+<rect class="node" x="64" y="2348" width="380" height="48" rx="10"/>
+<text class="label" x="80" y="2377">ACTIVITY_LOG</text>
+<path class="edge" d="M254,1940 L254,2432 L706,2432 L706,1892"/>
+<text class="edgeLabel" x="48" y="2446">has</text>
+<path class="edge" d="M254,1940 L254,2454 L254,2454 L254,1968"/>
+<text class="edgeLabel" x="48" y="2468">owns</text>
+<path class="edge" d="M254,2016 L254,2476 L706,2476 L706,1968"/>
+<text class="edgeLabel" x="48" y="2490">versions</text>
+<path class="edge" d="M706,2016 L706,2498 L254,2498 L254,2044"/>
+<text class="edgeLabel" x="48" y="2512">steps</text>
+<path class="edge" d="M706,2016 L706,2520 L706,2520 L706,2044"/>
+<text class="edgeLabel" x="48" y="2534">connections</text>
+<path class="edge" d="M706,2016 L706,2542 L706,2542 L706,2120"/>
+<text class="edgeLabel" x="48" y="2556">requires</text>
+<path class="edge" d="M706,2016 L706,2564 L254,2564 L254,2120"/>
+<text class="edgeLabel" x="48" y="2578">snapshots</text>
+<path class="edge" d="M706,2016 L706,2586 L254,2586 L254,2196"/>
+<text class="edgeLabel" x="48" y="2600">audited_as</text>
+<path class="edge" d="M254,2016 L254,2608 L706,2608 L706,2196"/>
+<text class="edgeLabel" x="48" y="2622">reveals</text>
+<path class="edge" d="M706,2244 L706,2630 L254,2630 L254,2272"/>
+<text class="edgeLabel" x="48" y="2644">supports</text>
+<path class="edge" d="M254,2320 L254,2652 L706,2652 L706,1968"/>
+<text class="edgeLabel" x="48" y="2666">creates</text>
+<path class="edge" d="M254,2016 L254,2674 L706,2674 L706,2272"/>
+<text class="edgeLabel" x="48" y="2688">secures</text>
+<path class="edge" d="M254,1940 L254,2696 L254,2696 L254,2348"/>
+<text class="edgeLabel" x="48" y="2710">records</text>
+</svg>

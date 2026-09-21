@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Emilda">
+  <rect width="512" height="512" rx="112" fill="#17324d"/>
+  <path d="M154 140h222v58H221v66h137v56H221v-6c0 39 23 58 69 58 32 0 62-9 92-26v63c-30 15-66 23-107 23-81 0-121-38-121-113V140Z" fill="#fff"/>
+  <circle cx="369" cy="136" r="28" fill="#74d1bf"/>
+</svg>
+

@@ -14,6 +14,7 @@ import {
 import { notFound } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { DeleteProcessButton } from "@/components/delete-process-button";
 import { HealthBadge } from "@/components/health-badge";
 import { ProcessMapPreview } from "@/components/process-map-preview";
 import { ProcessResourceLinks } from "@/components/process-resource-links";
@@ -82,6 +83,12 @@ export default async function ProcessPage({
               <ArrowRight />
             </TenantLink>
           </Button>
+          {editable && process.status === "DRAFT" && (
+            <DeleteProcessButton
+              processId={process.id}
+              processName={process.name}
+            />
+          )}
         </div>
       </section>
 

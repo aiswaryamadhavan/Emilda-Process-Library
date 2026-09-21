@@ -144,4 +144,16 @@ test("live Guardian stores an attached HTML map in a process draft", async ({
   await expect(
     page.getByRole("link", { name: "Open / download" }),
   ).toHaveAttribute("href", "https://docs.google.com/");
+  await page.getByRole("button", { name: "Delete process" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Delete “Customer enquiry handoff”?",
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Delete draft" }).click();
+  await expect(page).toHaveURL(/\/t\/acme\/processes$/);
+  await page.goto(`/t/acme/processes/${processId}`);
+  await expect(
+    page.getByRole("heading", { name: "This page could not be found." }),
+  ).toBeVisible();
 });

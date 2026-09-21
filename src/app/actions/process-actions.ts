@@ -346,6 +346,30 @@ export async function createProcessFromStarter(input: unknown) {
   };
 }
 
+const deleteDraftProcessSchema = z.object({
+  processId: z.string().uuid(),
+});
+
+export async function deleteDraftProcess(input: unknown) {
+  const parsed = deleteDraftProcessSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Process not found." };
+  const { supabase } = await resolveCurrentTenant();
+  if (!supabase) return { ok: false, error: "Database is not configured." };
+
+  const { error } = await supabase.rpc("soft_delete_draft_process", {
+    p_process_id: parsed.data.processId,
+  });
+  if (error)
+    return {
+      ok: false,
+      error:
+        "This process cannot be deleted. Only an unapproved draft without governance history can be deleted.",
+    };
+
+  revalidatePath("/processes");
+  return { ok: true };
+}
+
 const resourceLinkMutationSchema = z.object({
   processId: z.string().uuid(),
   versionId: z.string().uuid(),

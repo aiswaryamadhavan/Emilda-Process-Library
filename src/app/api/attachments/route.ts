@@ -26,7 +26,14 @@ const allowed = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "text/csv",
   "text/plain",
+  "text/html",
 ]);
+
+function attachmentMimeType(file: File) {
+  if (/\.html?$/i.test(file.name)) return "text/html";
+  if (/\.(mmd|mermaid|txt)$/i.test(file.name)) return "text/plain";
+  return file.type;
+}
 
 function signatureMatches(mime: string, bytes: Uint8Array) {
   const prefix = Buffer.from(bytes.slice(0, 12));
@@ -63,7 +70,8 @@ export async function POST(request: Request) {
       { error: "Choose a file and a valid attachment target." },
       { status: 400 },
     );
-  if (file.size < 1 || file.size > 25 * 1024 * 1024 || !allowed.has(file.type))
+  const mimeType = attachmentMimeType(file);
+  if (file.size < 1 || file.size > 25 * 1024 * 1024 || !allowed.has(mimeType))
     return Response.json(
       {
         error:
@@ -72,7 +80,7 @@ export async function POST(request: Request) {
       { status: 415 },
     );
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (!signatureMatches(file.type, bytes))
+  if (!signatureMatches(mimeType, bytes))
     return Response.json(
       { error: "The file contents do not match its declared type." },
       { status: 415 },
@@ -145,7 +153,7 @@ export async function POST(request: Request) {
   const path = `${tenant.id}/quarantine/${attachmentId}/${file.name.replace(/[^A-Za-z0-9._-]/g, "_")}`;
   const { error: uploadError } = await admin.storage
     .from("evidence")
-    .upload(path, bytes, { contentType: file.type, upsert: false });
+    .upload(path, bytes, { contentType: mimeType, upsert: false });
   if (uploadError)
     return Response.json(
       { error: "Upload did not finish. Try again." },
@@ -159,7 +167,7 @@ export async function POST(request: Request) {
     bucket: "evidence",
     object_path: path,
     filename: file.name,
-    mime_type: file.type,
+    mime_type: mimeType,
     size_bytes: file.size,
     sha256: createHash("sha256").update(bytes).digest("hex"),
     status: "AVAILABLE",

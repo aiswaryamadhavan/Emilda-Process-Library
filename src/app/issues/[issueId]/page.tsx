@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { AlertTriangle, ArrowRight, Repeat2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { TenantLink } from "@/components/tenant-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default function IssuePage() {
@@ -45,10 +45,10 @@ export default function IssuePage() {
         size="lg"
         className="mt-5 min-h-12 w-full rounded-xl sm:w-auto"
       >
-        <Link href="/change-requests/delegated-approval">
+        <TenantLink href="/change-requests/delegated-approval">
           Create improvement
           <ArrowRight />
-        </Link>
+        </TenantLink>
       </Button>
     </AppShell>
   );

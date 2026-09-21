@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import {
   Camera,
   Check,
@@ -15,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import { TenantLink } from "@/components/tenant-link";
 import { completeAudit, saveAuditItem } from "@/app/actions/process-actions";
 const checkpoints = [
   "Metric values updated before Monday review?",
@@ -94,7 +94,9 @@ export function AuditRunner() {
             · Next audit: 19 September
           </p>
           <Button asChild className="mt-6 min-h-11 rounded-xl">
-            <Link href="/issues/invoice-delay">View issue raised</Link>
+            <TenantLink href="/issues/invoice-delay">
+              View issue raised
+            </TenantLink>
           </Button>
           <Button
             variant="ghost"
@@ -227,34 +229,60 @@ function EvidenceButton({
   accept?: string;
   capture?: boolean;
 }) {
+  const [status, setStatus] = useState("");
+
   return (
-    <Label className="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border bg-white text-xs font-medium">
-      <Icon className="size-4" />
-      {label}
-      <input
-        className="sr-only"
-        type="file"
-        accept={accept}
-        capture={capture ? "environment" : undefined}
-        onChange={async (event) => {
-          const file = event.target.files?.[0];
-          if (!file) return;
-          const form = new FormData();
-          form.set("file", file);
-          form.set("processId", "50000000-0000-4000-8000-000000000001");
-          form.set("entityType", "AUDIT");
-          form.set("entityId", "80000000-0000-4000-8000-000000000002");
-          const localPrefix =
-            /^\/t\/[^/]+/.exec(window.location.pathname)?.[0] ?? "";
-          const response = await fetch(`${localPrefix}/api/attachments`, {
-            method: "POST",
-            body: form,
-          });
-          const data = await response.json();
-          if (response.ok) toast.success(`${data.filename} attached securely`);
-          else toast.error(data.error ?? "Upload did not finish.");
-        }}
-      />
-    </Label>
+    <div className="min-w-0">
+      <Label className="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border bg-white text-xs font-medium">
+        <Icon className="size-4" />
+        {label}
+        <input
+          className="sr-only"
+          type="file"
+          accept={accept}
+          capture={capture ? "environment" : undefined}
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            setStatus(`${file.name} uploading…`);
+            const form = new FormData();
+            form.set("file", file);
+            form.set("processId", "50000000-0000-4000-8000-000000000001");
+            form.set("entityType", "AUDIT");
+            form.set("entityId", "80000000-0000-4000-8000-000000000002");
+            const localPrefix =
+              /^\/t\/[^/]+/.exec(window.location.pathname)?.[0] ?? "";
+            try {
+              const response = await fetch(`${localPrefix}/api/attachments`, {
+                method: "POST",
+                body: form,
+              });
+              const data = await response.json();
+              if (response.ok) {
+                const message = `${data.filename} attached securely`;
+                setStatus(message);
+                toast.success(message);
+              } else {
+                const message = data.error ?? "Upload did not finish.";
+                setStatus(message);
+                toast.error(message);
+              }
+            } catch {
+              const message = "Upload did not finish. Check your connection.";
+              setStatus(message);
+              toast.error(message);
+            }
+          }}
+        />
+      </Label>
+      {status && (
+        <p
+          role="status"
+          className="mt-1 break-words text-center text-[10px] leading-4 text-muted-foreground"
+        >
+          {status}
+        </p>
+      )}
+    </div>
   );
 }

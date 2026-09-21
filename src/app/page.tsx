@@ -1,5 +1,4 @@
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
@@ -10,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { TenantLink } from "@/components/tenant-link";
 import { RoleWorkHome } from "@/components/role-work-home";
 import { SecondaryTenantHome } from "@/components/secondary-tenant-home";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,6 @@ export default async function HomePage({
   const { role } = await searchParams;
   const requestHeaders = await headers();
   const tenantSlug = requestHeaders.get("x-tenant-slug");
-  const localPrefix = requestHeaders.get("x-tenant-path-prefix") ?? "";
   const shellContext = decodeTenantShellContext(
     requestHeaders.get("x-tenant-shell-context"),
   );
@@ -41,7 +40,6 @@ export default async function HomePage({
     return (
       <LiveTenantHome
         processes={await getProcessSummaries()}
-        localPrefix={localPrefix}
         firstName={(shellContext?.viewerName ?? "there").split(" ")[0]}
       />
     );
@@ -108,10 +106,10 @@ export default async function HomePage({
               </p>
             </div>
             <Button asChild size="lg" className="min-h-11 w-full sm:w-auto">
-              <Link href="/approvals/purchase-v21">
+              <TenantLink href="/approvals/purchase-v21">
                 Review process
                 <ArrowRight />
-              </Link>
+              </TenantLink>
             </Button>
           </CardContent>
         </Card>
@@ -173,11 +171,9 @@ export default async function HomePage({
 
 function LiveTenantHome({
   processes,
-  localPrefix,
   firstName,
 }: {
   processes: ProcessSummary[];
-  localPrefix: string;
   firstName: string;
 }) {
   const active = processes.filter((process) => process.status === "ACTIVE");
@@ -211,8 +207,6 @@ function LiveTenantHome({
       return rank(left) - rank(right);
     })
     .slice(0, 3);
-  const processHref = (id: string) => `${localPrefix}/processes/${id}`;
-
   return (
     <AppShell
       title={`Good morning, ${firstName}`}
@@ -265,10 +259,10 @@ function LiveTenantHome({
                   </p>
                 </div>
                 <Button asChild className="min-h-11 w-full sm:w-auto">
-                  <Link href={processHref(process.id)}>
+                  <TenantLink href={`/processes/${process.id}`}>
                     {process.status === "DRAFT" ? "Continue" : "Review"}
                     <ArrowRight />
-                  </Link>
+                  </TenantLink>
                 </Button>
               </CardContent>
             </Card>
@@ -281,10 +275,10 @@ function LiveTenantHome({
                   Document one important recurring process to begin governance.
                 </p>
                 <Button asChild className="mt-5 min-h-11">
-                  <Link href={`${localPrefix}/processes/new`}>
+                  <TenantLink href="/processes/new">
                     Create process
                     <ArrowRight />
-                  </Link>
+                  </TenantLink>
                 </Button>
               </CardContent>
             </Card>

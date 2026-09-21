@@ -5,15 +5,14 @@ import {
   Check,
   ChevronLeft,
   CircleAlert,
+  FileCode2,
   GitBranch,
   Lightbulb,
   Link2,
   LoaderCircle,
   Plus,
-  Sparkles,
   Trash2,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createProcessFromStarter } from "@/app/actions/process-actions";
@@ -35,7 +34,12 @@ const sections = [
   ["People", "Make ownership and handoffs clear"],
   ["Proof", "Define evidence and exceptions"],
   ["Resources", "Keep the right templates close"],
+  ["HTML file", "Attach your existing process map"],
 ] as const;
+
+function isHtmlFile(file: File) {
+  return file.type === "text/html" || /\.html?$/i.test(file.name);
+}
 
 const emptyInput: ProcessStarterInput = {
   name: "",
@@ -87,16 +91,18 @@ const exampleInput: ProcessStarterInput = {
 
 export function ProcessStarter({ departments }: { departments: string[] }) {
   const { localPrefix } = useTenantTheme();
-  const router = useRouter();
   const [section, setSection] = useState(0);
   const [input, setInput] = useState<ProcessStarterInput>({
     ...emptyInput,
     department: departments[0] ?? "Operations",
   });
   const [draft, setDraft] = useState<ProcessStarterDraft | null>(null);
-  const [source, setSource] = useState<"AI" | "STARTER_TEMPLATE">("AI");
+  const [diagramFile, setDiagramFile] = useState<File | null>(null);
+  const [diagramPreview, setDiagramPreview] = useState("");
+  const [source, setSource] = useState<
+    "AI" | "STARTER_TEMPLATE" | "HTML_UPLOAD"
+  >("HTML_UPLOAD");
   const [notice, setNotice] = useState("");
-  const [generating, setGenerating] = useState(false);
   const [creating, setCreating] = useState(false);
   const [saved, setSaved] = useState("Saved just now");
 
@@ -128,7 +134,32 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
     input.resourceLinks.every(
       (item) => item.label.trim().length >= 2 && /^https?:\/\//i.test(item.url),
     ),
+    Boolean(diagramFile),
   ][section];
+
+  const continuationHint = [
+    "Add a process name and the outcome it must achieve.",
+    "Describe the problem and how the work happens today.",
+    "Name the accountable owner and the finished outcome.",
+    "Add the evidence and a realistic exception.",
+    "Complete each resource link or remove it before continuing.",
+    "Attach an HTML file containing your process diagram.",
+  ][section];
+
+  const selectDiagram = (file: File | null) => {
+    if (diagramPreview) URL.revokeObjectURL(diagramPreview);
+    if (!file) {
+      setDiagramFile(null);
+      setDiagramPreview("");
+      return;
+    }
+    if (!isHtmlFile(file) || file.size > 25 * 1024 * 1024) {
+      toast.error("Use an HTML file up to 25 MB.");
+      return;
+    }
+    setDiagramFile(file);
+    setDiagramPreview("");
+  };
 
   const addResourceLink = () =>
     setInput((current) => ({
@@ -164,30 +195,72 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
       ),
     }));
 
-  const generate = async () => {
-    setGenerating(true);
-    setDraft(null);
-    try {
-      const response = await fetch(`${localPrefix}/api/process-starter`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.error || "Draft could not be created");
-      setDraft(payload.draft);
-      setSource(payload.source);
-      setNotice(payload.notice);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Draft could not be created. Try again.",
-      );
-    } finally {
-      setGenerating(false);
-    }
+  const prepareHtmlForLibrary = () => {
+    if (!diagramFile) return;
+    const trigger = input.trigger || `Start ${input.name.toLowerCase()}`;
+    const output = input.output || `${input.name} is completed`;
+    setSource("HTML_UPLOAD");
+    setNotice(
+      "Your original HTML file will be stored with this process in the Process Library. No AI processing has been used.",
+    );
+    setDraft({
+      purpose: `Keep the original HTML process map for ${input.name} in the Process Library.`,
+      businessProblem: input.problem,
+      goal: input.goal,
+      trigger,
+      inScope: "The attached HTML process map.",
+      outOfScope:
+        "Transcribing, changing, or interpreting the uploaded diagram.",
+      ownerRole: input.ownerRole,
+      contributors: input.contributors
+        .split(/\n|,|;/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+      inputs: input.inputs
+        .split(/\n|,|;/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+      output,
+      metrics: [
+        {
+          name: "HTML process map available",
+          target: "Attached to the process record",
+          cadence: input.cadence || "When the process changes",
+          dataSource: diagramFile.name,
+        },
+      ],
+      exceptions: [
+        {
+          scenario: input.exceptions,
+          response: "Update and attach a revised HTML file.",
+          escalation: input.ownerRole,
+        },
+      ],
+      graph: {
+        direction: "LR",
+        nodes: [
+          {
+            id: "start",
+            type: "START",
+            title: trigger,
+            position: { x: 0, y: 120 },
+          },
+          {
+            id: "end",
+            type: "END",
+            title: output,
+            position: { x: 360, y: 120 },
+          },
+        ],
+        edges: [{ id: "e1", source: "start", target: "end" }],
+      },
+      assumptions: [
+        "The uploaded HTML is the source of truth; its diagram has not been transcribed or changed.",
+      ],
+      unansweredQuestions: [
+        "Review the attached HTML file in the Process Library before approving or editing this process.",
+      ],
+    });
   };
 
   const createDraft = async () => {
@@ -215,6 +288,22 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
       }
       processId = result.processId;
       versionId = result.versionId;
+
+      if (diagramFile) {
+        const attachment = new FormData();
+        attachment.set("file", diagramFile);
+        attachment.set("processId", processId);
+        attachment.set("entityType", "VERSION");
+        attachment.set("entityId", versionId);
+        const upload = await fetch(`${localPrefix}/api/attachments`, {
+          method: "POST",
+          body: attachment,
+        });
+        if (!upload.ok)
+          toast.warning(
+            "The process was saved, but the original HTML file could not be attached.",
+          );
+      }
     }
 
     localStorage.setItem(
@@ -227,7 +316,10 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
     );
     localStorage.removeItem("emilda:process-starter:draft");
     toast.success("Editable process draft created");
-    router.push(
+    // A full navigation avoids stalled RSC transitions while the large builder
+    // payload is rendered and preserves the tenant-prefixed destination.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign(
       `${localPrefix}/processes/${processId}/versions/${versionId}/builder`,
     );
   };
@@ -242,8 +334,7 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
           <div className="border-b bg-[linear-gradient(135deg,color-mix(in_srgb,var(--brand-primary)_9%,white),white)] p-5 sm:p-7">
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="rounded-full bg-[var(--brand-primary)] text-white">
-                <Sparkles />{" "}
-                {source === "AI" ? "AI starting draft" : "Smart starter"}
+                <FileCode2 /> HTML source attached
               </Badge>
               <Badge variant="outline" className="rounded-full bg-white">
                 Draft · human review required
@@ -279,39 +370,43 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
         <section className="rounded-2xl border bg-white p-5 sm:p-7">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="eyebrow">Suggested flow</p>
+              <p className="eyebrow">Original diagram source</p>
               <h3 className="mt-1 text-xl font-semibold">
-                {operatingSteps.length} editable operating steps
+                {operatingSteps.length
+                  ? `${operatingSteps.length} editable operating steps`
+                  : "HTML file retained without AI transcription"}
               </h3>
             </div>
             <GitBranch className="size-6 text-[var(--brand-primary)]" />
           </div>
-          <ol className="mt-5 space-y-3">
-            {operatingSteps.map((node, index) => (
-              <li key={node.id} className="flex gap-3 rounded-xl border p-4">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold">
-                  {index + 1}
-                </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold">{node.title}</p>
-                    <Badge variant="outline" className="text-[10px]">
-                      {node.type}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {node.actor || "Role to confirm"}
-                    {node.timing ? ` · ${node.timing}` : ""}
-                  </p>
-                  {node.evidence && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Evidence: {node.evidence}
+          {operatingSteps.length > 0 && (
+            <ol className="mt-5 space-y-3">
+              {operatingSteps.map((node, index) => (
+                <li key={node.id} className="flex gap-3 rounded-xl border p-4">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold">{node.title}</p>
+                      <Badge variant="outline" className="text-[10px]">
+                        {node.type}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {node.actor || "Role to confirm"}
+                      {node.timing ? ` · ${node.timing}` : ""}
                     </p>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
+                    {node.evidence && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Evidence: {node.evidence}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
         </section>
 
         <div className="grid gap-5 lg:grid-cols-2">
@@ -414,7 +509,7 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
             disabled={creating}
           >
             {creating ? <LoaderCircle className="animate-spin" /> : <Check />}
-            {creating ? "Creating draft…" : "Create editable draft"}
+            {creating ? "Saving to library…" : "Save to Process Library"}
           </Button>
         </div>
       </div>
@@ -456,8 +551,9 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
           )}
         </div>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Answer in plain language. Emilda will turn this into a draft map,
-          metrics, exceptions, and questions—not an approved process.
+          Answer in plain language. These details describe the process, but
+          Emilda will only build the workflow from the diagram you attach in the
+          final step.
         </p>
 
         <div className="mt-6 grid gap-5">
@@ -689,6 +785,94 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
               )}
             </div>
           )}
+          {section === 5 && (
+            <div>
+              <div className="rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm leading-6 text-teal-950">
+                <p className="flex items-center gap-2 font-semibold">
+                  <FileCode2 className="size-4" aria-hidden="true" />
+                  Attach the original HTML process map
+                </p>
+                <p className="mt-1">
+                  Attach the exported HTML file. It will be stored with the new
+                  process in the Process Library exactly as supplied. This step
+                  does not use an OpenAI API key or AI processing.
+                </p>
+              </div>
+
+              <Label
+                htmlFor="diagram-photo"
+                className="mt-5 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-[var(--surface-subtle)] p-5 text-center transition-colors hover:border-[var(--brand-primary)]"
+              >
+                <FileCode2
+                  className="size-8 text-[var(--brand-primary)]"
+                  aria-hidden="true"
+                />
+                <span className="mt-3 font-semibold">
+                  {diagramFile ? "Replace HTML file" : "Attach HTML file"}
+                </span>
+                <span className="mt-1 text-xs text-muted-foreground">
+                  HTML (.html or .htm) · maximum 25 MB
+                </span>
+                <input
+                  id="diagram-photo"
+                  type="file"
+                  accept="text/html,.html,.htm"
+                  className="sr-only"
+                  onChange={(event) =>
+                    selectDiagram(event.target.files?.[0] ?? null)
+                  }
+                />
+              </Label>
+
+              {diagramFile && diagramPreview && (
+                <div className="mt-4 overflow-hidden rounded-2xl border bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={diagramPreview}
+                    alt="Uploaded process diagram preview"
+                    className="max-h-80 w-full object-contain"
+                  />
+                  <div className="flex items-center justify-between gap-3 border-t p-3 text-sm">
+                    <span className="min-w-0 truncate">{diagramFile.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => selectDiagram(null)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {diagramFile && !diagramPreview && (
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border bg-white p-4 text-sm">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)]">
+                      <FileCode2 className="size-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">
+                        {diagramFile.name}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        HTML file attached — it will be included in the Process
+                        Library without AI processing.
+                      </span>
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => selectDiagram(null)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -716,20 +900,18 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
           <Button
             size="lg"
             className="min-h-12 flex-1"
-            disabled={!sectionValid || generating}
-            onClick={generate}
+            disabled={!sectionValid}
+            onClick={prepareHtmlForLibrary}
           >
-            {generating ? (
-              <LoaderCircle className="animate-spin" />
-            ) : (
-              <Sparkles />
-            )}
-            {generating
-              ? "Creating your starting draft…"
-              : "Create starting draft"}
+            <Check /> Review & save to Process Library
           </Button>
         )}
       </div>
+      {!sectionValid && (
+        <p role="status" className="mt-3 text-sm text-muted-foreground">
+          To continue: {continuationHint}
+        </p>
+      )}
     </div>
   );
 }

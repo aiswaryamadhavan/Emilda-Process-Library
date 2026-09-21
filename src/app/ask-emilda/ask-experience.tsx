@@ -1,12 +1,14 @@
 "use client";
-import Link from "next/link";
 import { ArrowRight, Bot, Send } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { TenantLink } from "@/components/tenant-link";
+import { useTenantTheme } from "@/components/tenant-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { AiCitation } from "@/lib/domain/types";
 export function AskExperience() {
+  const { localPrefix } = useTenantTheme();
   const [question, setQuestion] = useState("What is currently not working?");
   const [answer, setAnswer] = useState<string | null>(null);
   const [citations, setCitations] = useState<AiCitation[]>([]);
@@ -15,7 +17,7 @@ export function AskExperience() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    const response = await fetch("/api/ask-emilda", {
+    const response = await fetch(`${localPrefix}/api/ask-emilda`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question }),
@@ -58,14 +60,14 @@ export function AskExperience() {
                 <p className="eyebrow">Sources</p>
                 <div className="mt-2 space-y-2">
                   {citations.map((citation) => (
-                    <Link
+                    <TenantLink
                       key={citation.searchDocumentId}
                       href={citation.href}
                       className="flex min-h-11 items-center justify-between rounded-xl bg-muted px-3 text-sm font-medium"
                     >
                       {citation.label}
                       <ArrowRight className="size-4" />
-                    </Link>
+                    </TenantLink>
                   ))}
                 </div>
               </div>

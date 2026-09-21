@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { TenantLink } from "@/components/tenant-link";
 const links = [
   {
     label: "Ask Emilda",
@@ -60,24 +61,27 @@ export default function MorePage() {
       description="Administration stays out of the way until you need it."
     >
       <div className="divide-y overflow-hidden rounded-2xl border bg-white">
-        {links.map(({ icon: Icon, ...item }) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className="flex min-h-20 items-center gap-4 p-4 hover:bg-muted/40"
-          >
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted text-[var(--navy)]">
-              <Icon className="size-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-semibold">{item.label}</span>
-              <span className="mt-1 block truncate text-sm text-muted-foreground">
-                {item.detail}
+        {links.map(({ icon: Icon, ...item }) => {
+          const ItemLink = item.href.startsWith("/admin/") ? Link : TenantLink;
+          return (
+            <ItemLink
+              key={item.label}
+              href={item.href}
+              className="flex min-h-20 items-center gap-4 p-4 hover:bg-muted/40"
+            >
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted text-[var(--navy)]">
+                <Icon className="size-5" />
               </span>
-            </span>
-            <ChevronRight className="size-5 text-muted-foreground" />
-          </Link>
-        ))}
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{item.label}</span>
+                <span className="mt-1 block truncate text-sm text-muted-foreground">
+                  {item.detail}
+                </span>
+              </span>
+              <ChevronRight className="size-5 text-muted-foreground" />
+            </ItemLink>
+          );
+        })}
       </div>
     </AppShell>
   );

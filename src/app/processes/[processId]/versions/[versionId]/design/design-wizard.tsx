@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { ArrowRight, Check, ChevronLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { TenantLink } from "@/components/tenant-link";
 const stages = [
   [
     "Problem",
@@ -196,10 +196,10 @@ export function DesignWizard({ isNew = false }: { isNew?: boolean }) {
           </Button>
         ) : stage === 4 ? (
           <Button asChild size="lg" className="min-h-12 flex-1 rounded-xl">
-            <Link href="/processes/purchase-approval/versions/demo/builder">
+            <TenantLink href="/processes/purchase-approval/versions/demo/builder">
               Build process map
               <ArrowRight />
-            </Link>
+            </TenantLink>
           </Button>
         ) : stage < 9 ? (
           <Button
@@ -213,10 +213,10 @@ export function DesignWizard({ isNew = false }: { isNew?: boolean }) {
           </Button>
         ) : (
           <Button asChild size="lg" className="min-h-12 flex-1 rounded-xl">
-            <Link href="/approvals/purchase-v21">
+            <TenantLink href="/approvals/purchase-v21">
               Send for approval
               <ArrowRight />
-            </Link>
+            </TenantLink>
           </Button>
         )}
       </div>

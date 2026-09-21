@@ -5,6 +5,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   retries: process.env.CI ? 2 : 0,
+  expect: { timeout: 15000 },
   reporter: [["list"], ["html", { open: "never" }]],
   use: { baseURL, trace: "retain-on-failure" },
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER

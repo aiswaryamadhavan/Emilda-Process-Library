@@ -5,12 +5,12 @@ import {
   ClipboardCheck,
   FileCheck2,
 } from "lucide-react";
-import Link from "next/link";
 
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { TenantLink } from "@/components/tenant-link";
 
 export function RoleWorkHome({ role }: { role: "guardian" | "process-owner" }) {
   const guardian = role === "guardian";
@@ -62,7 +62,7 @@ export function RoleWorkHome({ role }: { role: "guardian" | "process-owner" }) {
             size="lg"
             className="mt-5 min-h-12 w-full rounded-xl sm:w-auto"
           >
-            <Link
+            <TenantLink
               href={
                 guardian
                   ? "/audits/scorecard-week-38"
@@ -71,7 +71,7 @@ export function RoleWorkHome({ role }: { role: "guardian" | "process-owner" }) {
             >
               {guardian ? "Continue audit" : "View request"}
               <ArrowRight />
-            </Link>
+            </TenantLink>
           </Button>
         </CardContent>
       </Card>
@@ -134,7 +134,7 @@ function WorkItem({
   href: string;
 }) {
   return (
-    <Link
+    <TenantLink
       href={href}
       className="flex min-h-24 items-center gap-4 rounded-xl border bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.035)] transition-colors hover:bg-muted/40"
     >
@@ -148,6 +148,6 @@ function WorkItem({
         </span>
       </span>
       <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground" />
-    </Link>
+    </TenantLink>
   );
 }

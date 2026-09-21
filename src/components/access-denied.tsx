@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { LockKeyhole } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { TenantLink } from "@/components/tenant-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -22,7 +22,7 @@ export function DesignAccessDenied() {
             design change. Approved content is never edited in place.
           </p>
           <Button asChild className="mt-5 min-h-11 rounded-xl">
-            <Link href="/processes">Return to processes</Link>
+            <TenantLink href="/processes">Return to processes</TenantLink>
           </Button>
         </CardContent>
       </Card>

@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { processHtml } from "./process-starter-fixture";
 
 test.skip(
   !process.env.LIVE_SUPABASE_E2E,
   "Runs only against the disposable local Supabase stack.",
 );
+
+test.describe.configure({ timeout: 90000 });
 
 async function signIn(
   page: import("@playwright/test").Page,
@@ -20,6 +23,34 @@ async function signIn(
     new RegExp(`${canonicalNext.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/?$`),
   );
 }
+
+test("direct tenant sign-in preserves local navigation context", async ({
+  page,
+}) => {
+  await page.goto("/t/acme/auth/login");
+  await page.getByLabel("Email").fill("owner@acme.emilda.test");
+  await page.getByLabel("Password").fill("EmildaDemo!2026");
+  await page.getByRole("button", { name: "Sign in with email" }).click();
+  await expect(page).toHaveURL(/\/t\/acme\/?$/);
+
+  await page
+    .getByRole("link", { name: "Processes", exact: true })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/t\/acme\/processes$/);
+  await expect(
+    page.getByRole("heading", { name: "Processes", level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Create process" }),
+  ).toHaveAttribute("href", "/t/acme/processes/new");
+  await expect(
+    page.getByRole("link", { name: "Open Purchase Approval" }),
+  ).toHaveAttribute(
+    "href",
+    "/t/acme/processes/50000000-0000-4000-8000-000000000002",
+  );
+});
 
 test("live owner approval is immutable and cross-tenant access is hidden", async ({
   page,
@@ -63,7 +94,11 @@ test("live Guardian can edit, resume an audit, and attach tenant-scoped evidence
     mimeType: "image/png",
     buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]),
   });
-  await expect(page.getByText("dispatch.png attached securely")).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({
+      hasText: "dispatch.png attached securely",
+    }),
+  ).toBeVisible();
 });
 
 test("live Viewer cannot discover a restricted process URL", async ({
@@ -79,16 +114,20 @@ test("live Viewer cannot discover a restricted process URL", async ({
   ).toHaveCount(0);
 });
 
-test("live Guardian creates an AI-assisted process draft with a tenant department", async ({
+test("live Guardian stores an attached HTML map in a process draft", async ({
   page,
 }) => {
   await signIn(page, "guardian@acme.emilda.test", "/t/acme/processes/new");
   await page.getByRole("button", { name: "Use example" }).click();
   for (let section = 0; section < 4; section += 1)
     await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Create starting draft" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel(/Attach HTML file/).setInputFiles(processHtml);
+  await page
+    .getByRole("button", { name: "Review & save to Process Library" })
+    .click();
   await expect(page.getByText("Draft · human review required")).toBeVisible();
-  await page.getByRole("button", { name: "Create editable draft" }).click();
+  await page.getByRole("button", { name: "Save to Process Library" }).click();
   await expect(page).toHaveURL(
     /\/t\/acme\/processes\/[0-9a-f-]{36}\/versions\/[0-9a-f-]{36}\/builder/,
   );

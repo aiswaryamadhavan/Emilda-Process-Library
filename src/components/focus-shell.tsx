@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
+import { TenantLink } from "@/components/tenant-link";
 import { Button } from "@/components/ui/button";
 export function FocusShell({
   eyebrow,
@@ -25,9 +25,9 @@ export function FocusShell({
             size="icon"
             className="size-11 rounded-xl border bg-white"
           >
-            <Link href="/" aria-label="Leave focus view">
+            <TenantLink href="/" aria-label="Leave focus view">
               <ArrowLeft />
-            </Link>
+            </TenantLink>
           </Button>
           <div className="flex items-center gap-2 rounded-full border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground">
             <ShieldCheck className="size-3.5 text-[var(--brand-primary)]" />

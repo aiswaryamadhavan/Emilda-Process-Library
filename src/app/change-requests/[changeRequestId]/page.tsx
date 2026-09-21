@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { TenantLink } from "@/components/tenant-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,10 +40,10 @@ export default function ChangeRequestPage() {
             released.
           </p>
           <Button asChild className="mt-4 min-h-11 rounded-xl">
-            <Link href="/processes/purchase-approval/versions/demo/design">
+            <TenantLink href="/processes/purchase-approval/versions/demo/design">
               Continue draft
               <ArrowRight />
-            </Link>
+            </TenantLink>
           </Button>
         </CardContent>
       </Card>

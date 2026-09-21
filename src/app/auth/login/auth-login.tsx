@@ -10,13 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-export function AuthLogin() {
+export function AuthLogin({
+  defaultDestination = "/",
+}: {
+  defaultDestination?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState<string | null>(null);
   const [email, setEmail] = useState("owner@acme.emilda.test");
   const [password, setPassword] = useState("EmildaDemo!2026");
-  const destination = searchParams.get("next") ?? "/";
+  const destination = searchParams.get("next") ?? defaultDestination;
   const login = async () => {
     const supabase = createSupabaseBrowserClient();
     if (!supabase) {

@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { Download, FileCheck2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { TenantLink } from "@/components/tenant-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,10 +22,10 @@ export default function ReleasePage() {
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <Button asChild size="lg" className="min-h-12 rounded-xl">
-          <a href="/api/releases/purchase-v21/pdf">
+          <TenantLink href="/api/releases/purchase-v21/pdf">
             <Download />
             Download release PDF
-          </a>
+          </TenantLink>
         </Button>
         <Button
           asChild
@@ -33,9 +33,9 @@ export default function ReleasePage() {
           size="lg"
           className="min-h-12 rounded-xl"
         >
-          <Link href="/processes/purchase-approval/implementation">
+          <TenantLink href="/processes/purchase-approval/implementation">
             Continue implementation
-          </Link>
+          </TenantLink>
         </Button>
       </div>
     </AppShell>

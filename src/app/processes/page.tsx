@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { ArrowRight, Building2, CalendarClock, Plus } from "lucide-react";
-import { headers } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { HealthBadge } from "@/components/health-badge";
+import { TenantForm, TenantLink } from "@/components/tenant-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +9,6 @@ import { getProcessSummaries } from "@/lib/data/processes";
 
 export default async function ProcessesPage() {
   const processes = await getProcessSummaries();
-  const localPrefix = (await headers()).get("x-tenant-path-prefix") ?? "";
   const groups = processes.reduce<Record<string, (typeof processes)[number][]>>(
     (result, process) => {
       (result[process.department] ??= []).push(process);
@@ -24,27 +22,27 @@ export default async function ProcessesPage() {
       description="The agreed way work runs—and the evidence that it is working."
       action={
         <Button asChild className="hidden min-h-11 rounded-xl sm:inline-flex">
-          <Link href={`${localPrefix}/processes/new`}>
+          <TenantLink href="/processes/new">
             <Plus />
             Create process
-          </Link>
+          </TenantLink>
         </Button>
       }
     >
-      <form action={`${localPrefix}/search`}>
+      <TenantForm action="/search">
         <Input
           name="q"
           aria-label="Search processes"
           placeholder="Search processes"
           className="h-12 rounded-xl bg-white"
         />
-      </form>
+      </TenantForm>
       <nav
         aria-label="Departments"
         className="mt-4 flex gap-2 overflow-x-auto pb-1"
       >
         {Object.entries(groups).map(([department, items]) => (
-          <Link
+          <TenantLink
             key={department}
             href={`#department-${department.toLowerCase().replaceAll(" ", "-")}`}
             className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border bg-white px-3 text-sm font-medium hover:border-[var(--brand-primary)]"
@@ -54,7 +52,7 @@ export default async function ProcessesPage() {
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
               {items.length}
             </span>
-          </Link>
+          </TenantLink>
         ))}
       </nav>
       <div className="mt-7 space-y-8">
@@ -71,10 +69,10 @@ export default async function ProcessesPage() {
                   questions and Emilda will create an editable starting map.
                 </p>
                 <Button asChild className="mt-5 min-h-11">
-                  <Link href={`${localPrefix}/processes/new`}>
+                  <TenantLink href="/processes/new">
                     <Plus />
                     Create first process
-                  </Link>
+                  </TenantLink>
                 </Button>
               </div>
             </CardContent>
@@ -125,12 +123,12 @@ export default async function ProcessesPage() {
                         size="icon"
                         className="size-11 rounded-xl"
                       >
-                        <Link
-                          href={`${localPrefix}/processes/${process.id}`}
+                        <TenantLink
+                          href={`/processes/${process.id}`}
                           aria-label={`Open ${process.name}`}
                         >
                           <ArrowRight />
-                        </Link>
+                        </TenantLink>
                       </Button>
                     </div>
                     <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t pt-4 text-sm text-muted-foreground">
@@ -152,10 +150,10 @@ export default async function ProcessesPage() {
         size="lg"
         className="fixed bottom-24 right-4 min-h-12 rounded-full shadow-lg sm:hidden"
       >
-        <Link href={`${localPrefix}/processes/new`}>
+        <TenantLink href="/processes/new">
           <Plus />
           Create process
-        </Link>
+        </TenantLink>
       </Button>
     </AppShell>
   );

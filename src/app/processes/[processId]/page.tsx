@@ -1,5 +1,3 @@
-import { headers } from "next/headers";
-import Link from "next/link";
 import {
   ArrowRight,
   CalendarClock,
@@ -19,6 +17,7 @@ import { AppShell } from "@/components/app-shell";
 import { HealthBadge } from "@/components/health-badge";
 import { ProcessMapPreview } from "@/components/process-map-preview";
 import { ProcessResourceLinks } from "@/components/process-resource-links";
+import { TenantLink } from "@/components/tenant-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,13 +32,11 @@ export default async function ProcessPage({
   const process = await getProcessWorkspace(processId);
   if (!process) notFound();
 
-  const localPrefix = (await headers()).get("x-tenant-path-prefix") ?? "";
-  const href = (path: string) => `${localPrefix}${path}`;
   const editable =
     ["DRAFT", "CHANGES_REQUESTED"].includes(process.status) &&
     (await canDesignProcess(processId));
   const primaryHref = editable
-    ? href(`/processes/${process.id}/versions/${process.versionId}/builder`)
+    ? `/processes/${process.id}/versions/${process.versionId}/builder`
     : "#process-map";
   const primaryLabel = editable
     ? "Continue process design"
@@ -80,10 +77,10 @@ export default async function ProcessPage({
             <strong className="text-foreground">{process.version}</strong>
           </p>
           <Button asChild className="min-h-11 w-full sm:w-auto">
-            <Link href={primaryHref}>
+            <TenantLink href={primaryHref}>
               {primaryLabel}
               <ArrowRight />
-            </Link>
+            </TenantLink>
           </Button>
         </div>
       </section>
@@ -143,24 +140,20 @@ export default async function ProcessPage({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button asChild variant="outline">
-                  <Link
-                    href={href(
-                      `/processes/${process.id}/versions/${process.versionId}/mermaid`,
-                    )}
+                  <TenantLink
+                    href={`/processes/${process.id}/versions/${process.versionId}/mermaid`}
                   >
                     <Code2 />
                     Mermaid
-                  </Link>
+                  </TenantLink>
                 </Button>
                 <Button asChild>
-                  <Link
-                    href={href(
-                      `/processes/${process.id}/versions/${process.versionId}/builder`,
-                    )}
+                  <TenantLink
+                    href={`/processes/${process.id}/versions/${process.versionId}/builder`}
                   >
                     <Network />
                     Open map
-                  </Link>
+                  </TenantLink>
                 </Button>
               </div>
             </CardHeader>
@@ -296,7 +289,9 @@ export default async function ProcessPage({
                     </p>
                   </div>
                   <Button asChild variant="outline">
-                    <Link href={href(`/issues/${issue.id}`)}>Review issue</Link>
+                    <TenantLink href={`/issues/${issue.id}`}>
+                      Review issue
+                    </TenantLink>
                   </Button>
                 </CardContent>
               </Card>
@@ -330,14 +325,12 @@ export default async function ProcessPage({
                 </div>
                 {index === 0 && process.versions.length > 1 && (
                   <Button asChild variant="outline">
-                    <Link
-                      href={href(
-                        `/processes/${process.id}/versions/${version.id}/compare`,
-                      )}
+                    <TenantLink
+                      href={`/processes/${process.id}/versions/${version.id}/compare`}
                     >
                       <GitCompareArrows />
                       Compare
-                    </Link>
+                    </TenantLink>
                   </Button>
                 )}
               </CardContent>

@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { ArrowRight, CalendarCheck, CircleAlert, FileText } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { TenantLink } from "@/components/tenant-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,10 +64,10 @@ export default function GovernancePage() {
                 variant="outline"
                 className="min-h-11 w-full rounded-xl sm:w-auto"
               >
-                <Link href={item.href}>
+                <TenantLink href={item.href}>
                   {item.action}
                   <ArrowRight />
-                </Link>
+                </TenantLink>
               </Button>
             </CardContent>
           </Card>

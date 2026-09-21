@@ -3,11 +3,25 @@ import type { CSSProperties } from "react";
 import { headers } from "next/headers";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { tenantPortalPath } from "@/lib/tenant";
 import { AuthLogin } from "./auth-login";
 
 export default async function LoginPage() {
   const supabase = await createSupabaseServerClient();
-  const explicitTenantSlug = (await headers()).get("x-tenant-slug");
+  const requestHeaders = await headers();
+  const explicitTenantSlug = requestHeaders.get("x-tenant-slug");
+  const tenantPathPrefix = requestHeaders.get("x-tenant-path-prefix") ?? "";
+  const requestHost = requestHeaders.get("host");
+  const defaultDestination = explicitTenantSlug
+    ? tenantPortalPath(
+        explicitTenantSlug,
+        requestHost,
+        process.env.ROOT_DOMAIN,
+        process.env.TENANT_PATH_HOST,
+      )
+    : tenantPathPrefix
+      ? `${tenantPathPrefix}/`
+      : "/";
   const tenantSlug = explicitTenantSlug ?? (supabase ? "" : "acme");
   let tenant = tenantSlug
     ? {
@@ -62,7 +76,7 @@ export default async function LoginPage() {
             ? "See what needs attention and keep agreed processes working."
             : "Create clients, give people access, and govern every important process from one calm workspace."}
         </p>
-        <AuthLogin />
+        <AuthLogin defaultDestination={defaultDestination} />
         <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="size-4" />
           Your tenant and permissions are checked on every request.

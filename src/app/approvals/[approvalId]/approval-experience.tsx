@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { Check, FileText, Minus, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -16,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { TenantLink } from "@/components/tenant-link";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { respondToApproval } from "@/app/actions/process-actions";
@@ -73,7 +73,7 @@ export function ApprovalExperience() {
               : "The current approval is closed. A revised version will need a new approval."}
           </p>
           <Button asChild className="mt-6 min-h-11 rounded-xl">
-            <Link href="/">Return home</Link>
+            <TenantLink href="/">Return home</TenantLink>
           </Button>
           {!process.env.NEXT_PUBLIC_SUPABASE_URL && (
             <Button
@@ -116,10 +116,10 @@ export function ApprovalExperience() {
         </CardContent>
       </Card>
       <Button asChild variant="outline" className="min-h-12 w-full rounded-xl">
-        <Link href="/processes/purchase-approval">
+        <TenantLink href="/processes/purchase-approval">
           <FileText />
           View full process
-        </Link>
+        </TenantLink>
       </Button>
       <div className="pt-3">
         <Label htmlFor="approval-note">Optional note</Label>

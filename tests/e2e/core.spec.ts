@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { processHtml } from "./process-starter-fixture";
 test("owner sees business health and no horizontal overflow", async ({
   page,
 }) => {
@@ -182,7 +183,12 @@ test("Guardian gets a transparent editable process starting draft", async ({
   await expect(page.getByLabel("Name")).toHaveValue(
     "Customer handoff message template",
   );
-  await page.getByRole("button", { name: "Create starting draft" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel(/Attach HTML file/).setInputFiles(processHtml);
+  await expect(page.getByText("customer-enquiry-process.html")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Review & save to Process Library" })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Customer enquiry handoff" }),
   ).toBeVisible();
@@ -191,7 +197,7 @@ test("Guardian gets a transparent editable process starting draft", async ({
   await expect(
     page.getByRole("link", { name: /Customer handoff message template/ }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Create editable draft" }).click();
+  await page.getByRole("button", { name: "Save to Process Library" }).click();
   await expect(page).toHaveURL(
     /customer-enquiry-handoff\/versions\/draft\/builder/,
   );
@@ -200,7 +206,7 @@ test("Guardian gets a transparent editable process starting draft", async ({
   ).toBeVisible();
   await page.getByRole("link", { name: /Edit Mermaid/ }).click();
   await expect(page.getByLabel("Mermaid source")).toHaveValue(
-    /qualified customer enquiry/,
+    /qualified enquiry received/i,
   );
 });
 test("Guardian uploads photo evidence", async ({ page }) => {
@@ -213,7 +219,11 @@ test("Guardian uploads photo evidence", async ({ page }) => {
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
     ]),
   });
-  await expect(page.getByText("dispatch.png attached securely")).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({
+      hasText: "dispatch.png attached securely",
+    }),
+  ).toBeVisible();
 });
 test("issue evidence leads to a linked improvement draft", async ({ page }) => {
   await page.goto("/t/acme/issues/invoice-delay");

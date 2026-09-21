@@ -1,7 +1,7 @@
 import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
-import Link from "next/link";
 
 import { AppShell } from "@/components/app-shell";
+import { TenantLink } from "@/components/tenant-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -35,10 +35,10 @@ export function SecondaryTenantHome() {
             One response-time checkpoint needs review.
           </p>
           <Button asChild className="mt-5 min-h-11 rounded-xl">
-            <Link href="/processes">
+            <TenantLink href="/processes">
               Review process
               <ArrowRight />
-            </Link>
+            </TenantLink>
           </Button>
         </CardContent>
       </Card>

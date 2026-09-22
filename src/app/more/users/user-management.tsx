@@ -29,13 +29,9 @@ export type TenantInvitationView = {
 };
 
 const roles = [
-  ["TENANT_ADMIN", "Tenant Admin"],
-  ["PROCESS_GUARDIAN", "Process Guardian"],
-  ["PROCESS_OWNER", "Process Owner"],
-  ["CONTRIBUTOR", "Contributor"],
-  ["APPROVER", "Approver"],
-  ["VIEWER", "Viewer"],
-  ["AUDITOR", "Auditor"],
+  ["TENANT_ADMIN", "Admin"],
+  ["PROCESS_OWNER", "Client"],
+  ["VIEWER", "Employee"],
 ] as const;
 
 export function UserManagement({
@@ -51,13 +47,6 @@ export function UserManagement({
   const [email, setEmail] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>(["VIEWER"]);
   const [submitting, setSubmitting] = useState(false);
-
-  const toggleRole = (role: string) =>
-    setSelectedRoles((current) =>
-      current.includes(role)
-        ? current.filter((item) => item !== role)
-        : [...current, role],
-    );
 
   const invite = async () => {
     setSubmitting(true);
@@ -168,14 +157,16 @@ export function UserManagement({
           </span>
           <div>
             <h2 className="font-semibold">Give someone access</h2>
-            <p className="text-xs text-muted-foreground">Google account only</p>
+            <p className="text-xs text-muted-foreground">
+              Use their work email
+            </p>
           </div>
         </div>
 
         {canInvite ? (
           <>
             <div className="mt-5">
-              <Label htmlFor="invite-google-email">Google email</Label>
+              <Label htmlFor="invite-google-email">Work email</Label>
               <Input
                 id="invite-google-email"
                 type="email"
@@ -186,7 +177,7 @@ export function UserManagement({
               />
             </div>
             <fieldset className="mt-5">
-              <legend className="text-sm font-medium">What can they do?</legend>
+              <legend className="text-sm font-medium">User type</legend>
               <div className="mt-3 grid gap-2">
                 {roles.map(([value, label]) => (
                   <label
@@ -194,9 +185,10 @@ export function UserManagement({
                     className="flex min-h-11 items-center gap-3 rounded-xl border px-3 text-sm"
                   >
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="user-type"
                       checked={selectedRoles.includes(value)}
-                      onChange={() => toggleRole(value)}
+                      onChange={() => setSelectedRoles([value])}
                     />
                     {label}
                   </label>
@@ -209,7 +201,7 @@ export function UserManagement({
               onClick={invite}
             >
               <UserPlus />
-              {submitting ? "Creating access…" : "Create Google access"}
+              {submitting ? "Creating access…" : "Create user access"}
             </Button>
             <Button
               variant="outline"
@@ -218,7 +210,7 @@ export function UserManagement({
                 await navigator.clipboard.writeText(
                   `${window.location.origin}${localPrefix}/auth/login`,
                 );
-                toast.success("Client sign-in link copied");
+                toast.success("Sign-in link copied");
               }}
             >
               <Copy /> Copy sign-in link

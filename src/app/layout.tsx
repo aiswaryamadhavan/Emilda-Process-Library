@@ -23,6 +23,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+function displayRole(role: string, email?: string | null) {
+  if (email?.toLowerCase() === "paul@emildasolutions.com") return "Super Admin";
+  if (email?.toLowerCase() === "aiswarya@emildasolutions.com") return "Admin";
+  return (
+    {
+      "Tenant Admin": "Admin",
+      "Process Owner": "Client",
+      Viewer: "Employee",
+    }[role] ?? role
+  );
+}
+
 export const metadata: Metadata = {
   title: {
     default: "Emilda Governance OS",
@@ -90,7 +102,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     };
     viewer = {
       name: shellContext.viewerName,
-      role: shellContext.viewerRole,
+      role: displayRole(shellContext.viewerRole),
     };
     if (shellContext.supportExpiresAt) {
       supportAccess = {
@@ -117,7 +129,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         ) ||
         user.email?.split("@")[0] ||
         "Emilda user";
-      const role = tenantSlug ? "Team member" : "Emilda Super Admin";
+      const role = tenantSlug
+        ? "Employee"
+        : displayRole("Employee", user.email);
 
       viewer = { name, role };
     }

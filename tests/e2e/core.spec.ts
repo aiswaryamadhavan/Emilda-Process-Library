@@ -156,12 +156,17 @@ test("tenant administration exposes real Google access controls", async ({
   page,
 }) => {
   await page.goto("/t/acme/more/users");
+  if (await page.getByLabel("Email").isVisible()) {
+    await page.getByLabel("Email").fill("admin@acme.emilda.test");
+    await page.getByLabel("Password").fill("EmildaDemo!2026");
+    await page.getByRole("button", { name: "Sign in with email" }).click();
+  }
   await expect(
     page.getByRole("heading", { name: "Users & roles" }),
   ).toBeVisible();
-  await expect(page.getByText("Google account only")).toBeVisible();
+  await expect(page.getByText("Use their work email")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Create Google access" }),
+    page.getByRole("button", { name: "Create user access" }),
   ).toBeVisible();
   await expect(page.getByText(/User ID ·/).first()).toBeVisible();
 });

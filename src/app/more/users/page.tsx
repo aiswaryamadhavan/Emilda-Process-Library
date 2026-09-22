@@ -133,7 +133,7 @@ export default async function UsersPage() {
   return (
     <AppShell
       title="Users & roles"
-      description="Give people access using their Google account and keep responsibilities explicit."
+      description="Admins create access and assign people only to the process libraries they need."
     >
       <UserManagement
         members={members}

@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   FolderKanban,
   Home,
+  LogOut,
   Search,
   Settings2,
   Sparkles,
@@ -153,6 +154,18 @@ export function AppShell({
               </span>
             </span>
           </div>
+          {mode === "tenant" && (
+            <form action={tenantHref("/auth/sign-out")} method="post">
+              <Button
+                type="submit"
+                variant="ghost"
+                className="mt-1 min-h-10 w-full justify-start gap-2 px-3 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="size-4" aria-hidden="true" />
+                Log out
+              </Button>
+            </form>
+          )}
           {mode === "tenant" && !process.env.NEXT_PUBLIC_SUPABASE_URL && (
             <details className="group mt-1">
               <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">

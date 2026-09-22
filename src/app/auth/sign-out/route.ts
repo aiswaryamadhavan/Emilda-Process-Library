@@ -3,5 +3,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   await supabase?.auth.signOut();
-  return NextResponse.redirect(new URL("/auth/login", request.url), 303);
+  const tenantPrefix = request.headers.get("x-tenant-path-prefix") ?? "";
+  return NextResponse.redirect(
+    new URL(`${tenantPrefix}/auth/login`, request.url),
+    303,
+  );
 }

@@ -8,6 +8,7 @@ import {
   weeklyScorecardGraph,
 } from "@/lib/demo-data";
 import type { ProcessGraph } from "@/lib/domain/types";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ProcessSummary = {
@@ -52,6 +53,7 @@ export type ProcessWorkspace = ProcessSummary & {
     url: string;
     description: string;
   }[];
+  htmlMap: { attachmentId: string; filename: string } | null;
 };
 
 type SupabaseClient = NonNullable<
@@ -198,6 +200,7 @@ function demoWorkspace(processId: string): ProcessWorkspace | null {
       },
     ],
     resourceLinks: [],
+    htmlMap: null,
   };
 }
 
@@ -209,6 +212,7 @@ export async function getProcessWorkspace(
   if (!supabase) return demoWorkspace(processId);
   const tenantId = await requestTenantId(supabase);
   if (!tenantId) return null;
+  const admin = createSupabaseAdminClient();
 
   let processQuery = supabase
     .from("processes")
@@ -249,6 +253,7 @@ export async function getProcessWorkspace(
     auditsResult,
     issuesResult,
     resourceLinksResult,
+    htmlMapResult,
   ] = await Promise.all([
     process.department_id
       ? supabase
@@ -311,6 +316,17 @@ export async function getProcessWorkspace(
       .eq("process_id", process.id)
       .eq("version_id", version.id)
       .order("created_at"),
+    admin
+      ? admin
+          .from("attachments")
+          .select("id,filename")
+          .eq("tenant_id", tenantId)
+          .eq("process_id", process.id)
+          .eq("mime_type", "text/html")
+          .eq("status", "AVAILABLE")
+          .order("created_at", { ascending: false })
+          .limit(1)
+      : Promise.resolve({ data: [] as { id: string; filename: string }[] }),
   ]);
 
   const nodes = nodesResult.data ?? [];
@@ -402,6 +418,12 @@ export async function getProcessWorkspace(
       url: item.url,
       description: item.description ?? "",
     })),
+    htmlMap: htmlMapResult.data?.[0]
+      ? {
+          attachmentId: htmlMapResult.data[0].id,
+          filename: htmlMapResult.data[0].filename,
+        }
+      : null,
   };
 }
 

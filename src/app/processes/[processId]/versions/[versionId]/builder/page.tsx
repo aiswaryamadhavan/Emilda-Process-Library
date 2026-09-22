@@ -3,7 +3,9 @@ import { ProcessBuilder } from "./process-builder";
 import { canDesignProcess } from "@/lib/access";
 import { DesignAccessDenied } from "@/components/access-denied";
 import { getProcessVersionGraph } from "@/lib/data/processes";
-import { notFound } from "next/navigation";
+import { getProcessWorkspace } from "@/lib/data/processes";
+import { headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 export default async function BuilderPage({
   params,
 }: {
@@ -11,6 +13,11 @@ export default async function BuilderPage({
 }) {
   const { processId, versionId } = await params;
   if (!(await canDesignProcess(processId))) return <DesignAccessDenied />;
+  const workspace = await getProcessWorkspace(processId, versionId);
+  if (workspace?.htmlMap) {
+    const prefix = (await headers()).get("x-tenant-path-prefix") ?? "";
+    redirect(`${prefix}/processes/${workspace.id}`);
+  }
   const process = await getProcessVersionGraph(processId, versionId);
   if (!process) notFound();
   return (

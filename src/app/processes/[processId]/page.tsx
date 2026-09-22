@@ -16,6 +16,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DeleteProcessButton } from "@/components/delete-process-button";
 import { HealthBadge } from "@/components/health-badge";
+import { HtmlProcessMap } from "@/components/html-process-map";
 import { ProcessMapPreview } from "@/components/process-map-preview";
 import { ProcessResourceLinks } from "@/components/process-resource-links";
 import { TenantLink } from "@/components/tenant-link";
@@ -36,12 +37,16 @@ export default async function ProcessPage({
   const editable =
     ["DRAFT", "CHANGES_REQUESTED"].includes(process.status) &&
     (await canDesignProcess(processId));
-  const primaryHref = editable
-    ? `/processes/${process.id}/versions/${process.versionId}/builder`
-    : "#process-map";
-  const primaryLabel = editable
-    ? "Continue process design"
-    : "View process map";
+  const primaryHref = process.htmlMap
+    ? "#html-process-map"
+    : editable
+      ? `/processes/${process.id}/versions/${process.versionId}/builder`
+      : "#process-map";
+  const primaryLabel = process.htmlMap
+    ? "View uploaded process map"
+    : editable
+      ? "Continue process design"
+      : "View process map";
 
   return (
     <AppShell
@@ -97,9 +102,11 @@ export default async function ProcessPage({
           <TabsTrigger value="overview" className="min-h-10 px-4">
             Overview
           </TabsTrigger>
-          <TabsTrigger value="process" className="min-h-10 px-4">
-            Process
-          </TabsTrigger>
+          {!process.htmlMap && (
+            <TabsTrigger value="process" className="min-h-10 px-4">
+              Process
+            </TabsTrigger>
+          )}
           <TabsTrigger value="metrics" className="min-h-10 px-4">
             Metrics
           </TabsTrigger>
@@ -141,31 +148,39 @@ export default async function ProcessPage({
               <div>
                 <p className="eyebrow">How work moves</p>
                 <CardTitle className="mt-1 text-lg font-semibold">
-                  {process.graph.nodes.length} clear steps from trigger to
-                  outcome
+                  {process.htmlMap
+                    ? "Original HTML process map"
+                    : `${process.graph.nodes.length} clear steps from trigger to outcome`}
                 </CardTitle>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button asChild variant="outline">
-                  <TenantLink
-                    href={`/processes/${process.id}/versions/${process.versionId}/mermaid`}
-                  >
-                    <Code2 />
-                    Mermaid
-                  </TenantLink>
-                </Button>
-                <Button asChild>
-                  <TenantLink
-                    href={`/processes/${process.id}/versions/${process.versionId}/builder`}
-                  >
-                    <Network />
-                    Open map
-                  </TenantLink>
-                </Button>
-              </div>
+              {!process.htmlMap && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button asChild variant="outline">
+                    <TenantLink
+                      href={`/processes/${process.id}/versions/${process.versionId}/mermaid`}
+                    >
+                      <Code2 />
+                      Mermaid
+                    </TenantLink>
+                  </Button>
+                  <Button asChild>
+                    <TenantLink
+                      href={`/processes/${process.id}/versions/${process.versionId}/builder`}
+                    >
+                      <Network />
+                      Open map
+                    </TenantLink>
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="p-4 sm:p-5">
-              {process.graph.nodes.length ? (
+              {process.htmlMap ? (
+                <HtmlProcessMap
+                  attachmentId={process.htmlMap.attachmentId}
+                  filename={process.htmlMap.filename}
+                />
+              ) : process.graph.nodes.length ? (
                 <ProcessMapPreview graph={process.graph} />
               ) : (
                 <p className="py-12 text-center text-sm text-muted-foreground">
@@ -188,75 +203,77 @@ export default async function ProcessPage({
           </div>
         </TabsContent>
 
-        <TabsContent value="process" className="mt-5 space-y-4">
-          <Card>
-            <CardHeader className="border-b pb-4">
-              <p className="eyebrow">Step-by-step operating standard</p>
-              <CardTitle className="mt-1 text-lg font-semibold">
-                Who does what, by when, and how it is proved
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="divide-y p-0">
-              {process.graph.nodes.map((node, index) => (
-                <div
-                  key={node.id}
-                  className="grid gap-3 p-4 sm:grid-cols-[2.5rem_1fr_auto] sm:items-start sm:p-5"
-                >
-                  <span className="grid size-8 place-items-center rounded-full bg-muted text-xs font-bold">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold">{node.title}</h3>
-                      <Badge
-                        variant="outline"
-                        className="rounded-md text-[10px]"
-                      >
-                        {node.type}
-                      </Badge>
-                    </div>
-                    <p className="mt-1.5 text-sm text-muted-foreground">
-                      {node.actor ?? "Role to confirm"}
-                      {node.timing ? ` · ${node.timing}` : ""}
-                    </p>
-                    {node.why && (
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {node.why}
-                      </p>
-                    )}
-                  </div>
-                  {node.evidence && (
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Evidence: {node.evidence}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          {process.exceptions.length > 0 && (
+        {!process.htmlMap && (
+          <TabsContent value="process" className="mt-5 space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  Exceptions and escalation
+              <CardHeader className="border-b pb-4">
+                <p className="eyebrow">Step-by-step operating standard</p>
+                <CardTitle className="mt-1 text-lg font-semibold">
+                  Who does what, by when, and how it is proved
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-3">
-                {process.exceptions.map((item) => (
-                  <div key={item.id} className="rounded-xl border p-4">
-                    <p className="font-semibold">{item.scenario}</p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {item.response}
-                    </p>
-                    <p className="mt-2 text-xs font-medium text-muted-foreground">
-                      Escalation: {item.escalation}
-                    </p>
+              <CardContent className="divide-y p-0">
+                {process.graph.nodes.map((node, index) => (
+                  <div
+                    key={node.id}
+                    className="grid gap-3 p-4 sm:grid-cols-[2.5rem_1fr_auto] sm:items-start sm:p-5"
+                  >
+                    <span className="grid size-8 place-items-center rounded-full bg-muted text-xs font-bold">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold">{node.title}</h3>
+                        <Badge
+                          variant="outline"
+                          className="rounded-md text-[10px]"
+                        >
+                          {node.type}
+                        </Badge>
+                      </div>
+                      <p className="mt-1.5 text-sm text-muted-foreground">
+                        {node.actor ?? "Role to confirm"}
+                        {node.timing ? ` · ${node.timing}` : ""}
+                      </p>
+                      {node.why && (
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          {node.why}
+                        </p>
+                      )}
+                    </div>
+                    {node.evidence && (
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Evidence: {node.evidence}
+                      </span>
+                    )}
                   </div>
                 ))}
               </CardContent>
             </Card>
-          )}
-        </TabsContent>
+            {process.exceptions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    Exceptions and escalation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-3">
+                  {process.exceptions.map((item) => (
+                    <div key={item.id} className="rounded-xl border p-4">
+                      <p className="font-semibold">{item.scenario}</p>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        {item.response}
+                      </p>
+                      <p className="mt-2 text-xs font-medium text-muted-foreground">
+                        Escalation: {item.escalation}
+                      </p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
 
         <TabsContent value="metrics" className="mt-5 grid gap-4 md:grid-cols-2">
           {process.metrics.length ? (

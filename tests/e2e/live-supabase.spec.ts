@@ -127,6 +127,11 @@ test("live Guardian stores an attached HTML map in a process draft", async ({
     .getByRole("button", { name: "Add HTML process to Process Library" })
     .click();
   await expect(page).toHaveURL(/\/t\/acme\/processes\/[0-9a-f-]{36}$/);
+  await expect(page.getByTitle("Uploaded HTML process map")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue process design" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open map" })).toHaveCount(0);
   const processUrl = new URL(page.url());
   const processId = processUrl.pathname.split("/")[4];
   await page.goto(`/t/acme/processes/${processId}`);

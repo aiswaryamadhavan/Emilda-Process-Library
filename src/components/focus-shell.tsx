@@ -1,6 +1,7 @@
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { TenantLink } from "@/components/tenant-link";
+import { FocusAccountActions } from "@/components/focus-account-actions";
 import { Button } from "@/components/ui/button";
 export function FocusShell({
   eyebrow,
@@ -18,7 +19,7 @@ export function FocusShell({
   return (
     <main className="min-h-dvh bg-[var(--surface-subtle)] px-4 py-4 sm:px-7 sm:py-6">
       <div className={`mx-auto ${wide ? "max-w-[1400px]" : "max-w-2xl"}`}>
-        <header className="flex items-center justify-between">
+        <header className="flex items-center justify-between gap-3">
           <Button
             asChild
             variant="ghost"
@@ -29,9 +30,12 @@ export function FocusShell({
               <ArrowLeft />
             </TenantLink>
           </Button>
-          <div className="flex items-center gap-2 rounded-full border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground">
-            <ShieldCheck className="size-3.5 text-[var(--brand-primary)]" />
-            Focus view
+          <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-full border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground sm:flex">
+              <ShieldCheck className="size-3.5 text-[var(--brand-primary)]" />
+              Focus view
+            </div>
+            <FocusAccountActions />
           </div>
         </header>
         <div className="mt-6 border-b border-border/80 pb-5">

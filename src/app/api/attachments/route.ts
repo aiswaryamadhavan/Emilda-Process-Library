@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { resolveTenantRoute } from "@/lib/tenant";
 
 const metadataSchema = z.object({
   processId: z.string().uuid(),
@@ -95,25 +96,42 @@ export async function POST(request: Request) {
       demo: true,
     });
 
-  const tenantSlug = (await headers()).get("x-tenant-slug");
-  const { data: tenant } = await supabase
-    .from("tenants")
-    .select("id")
-    .eq("slug", tenantSlug ?? "")
-    .maybeSingle();
+  const requestHeaders = await headers();
+  const proxyTenantId = z
+    .string()
+    .uuid()
+    .safeParse(requestHeaders.get("x-tenant-id"));
+  let tenant = proxyTenantId.success ? { id: proxyTenantId.data } : null;
+  if (!tenant) {
+    const requestUrl = new URL(request.url);
+    const tenantSlug: string | null | undefined =
+      requestHeaders.get("x-tenant-slug") ??
+      resolveTenantRoute(
+        requestUrl.host,
+        requestUrl.pathname,
+        globalThis.process.env.ROOT_DOMAIN,
+        globalThis.process.env.TENANT_PATH_HOST,
+      )?.slug;
+    const { data } = await supabase
+      .from("tenants")
+      .select("id")
+      .eq("slug", tenantSlug ?? "")
+      .maybeSingle();
+    tenant = data;
+  }
   if (!tenant)
     return Response.json({ error: "Tenant not found." }, { status: 404 });
-  const { data: process } = await supabase
+  const { data: processRecord } = await supabase
     .from("processes")
     .select("id")
     .eq("tenant_id", tenant.id)
     .eq("id", parsed.data.processId)
     .maybeSingle();
-  if (!process)
+  if (!processRecord)
     return Response.json({ error: "Process not found." }, { status: 404 });
   if (
     parsed.data.entityType === "PROCESS" &&
-    parsed.data.entityId !== process.id
+    parsed.data.entityId !== processRecord.id
   )
     return Response.json(
       { error: "Attachment target not found." },
@@ -131,7 +149,7 @@ export async function POST(request: Request) {
       .from(targetTables[parsed.data.entityType])
       .select("id")
       .eq("tenant_id", tenant.id)
-      .eq("process_id", process.id)
+      .eq("process_id", processRecord.id)
       .eq("id", parsed.data.entityId)
       .maybeSingle();
     if (!target)
@@ -156,13 +174,15 @@ export async function POST(request: Request) {
     .upload(path, bytes, { contentType: mimeType, upsert: false });
   if (uploadError)
     return Response.json(
-      { error: "Upload did not finish. Try again." },
+      {
+        error: `Upload did not finish: ${uploadError.message || "storage is unavailable"}`,
+      },
       { status: 500 },
     );
   const { error: recordError } = await admin.from("attachments").insert({
     id: attachmentId,
     tenant_id: tenant.id,
-    process_id: process.id,
+    process_id: processRecord.id,
     uploader_id: user.id,
     bucket: "evidence",
     object_path: path,
@@ -183,27 +203,27 @@ export async function POST(request: Request) {
     parsed.data.entityType === "AUDIT"
       ? admin.from("audit_attachments").insert({
           tenant_id: tenant.id,
-          process_id: process.id,
+          process_id: processRecord.id,
           attachment_id: attachmentId,
           audit_id: parsed.data.entityId,
         })
       : parsed.data.entityType === "ISSUE"
         ? admin.from("issue_attachments").insert({
             tenant_id: tenant.id,
-            process_id: process.id,
+            process_id: processRecord.id,
             attachment_id: attachmentId,
             issue_id: parsed.data.entityId,
           })
         : parsed.data.entityType === "CHANGE_REQUEST"
           ? admin.from("change_request_attachments").insert({
               tenant_id: tenant.id,
-              process_id: process.id,
+              process_id: processRecord.id,
               attachment_id: attachmentId,
               change_request_id: parsed.data.entityId,
             })
           : admin.from("process_attachments").insert({
               tenant_id: tenant.id,
-              process_id: process.id,
+              process_id: processRecord.id,
               attachment_id: attachmentId,
               version_id:
                 parsed.data.entityType === "VERSION"

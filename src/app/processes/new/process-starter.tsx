@@ -4,20 +4,16 @@ import {
   ArrowRight,
   Check,
   ChevronLeft,
-  CircleAlert,
   FileCode2,
-  GitBranch,
-  Lightbulb,
-  Link2,
   LoaderCircle,
   Plus,
   Trash2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createProcessFromStarter } from "@/app/actions/process-actions";
 import { useTenantTheme } from "@/components/tenant-provider";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,19 +24,11 @@ import type {
   ProcessStarterInput,
 } from "@/lib/domain/process-starter";
 
-const sections = [
-  ["Outcome", "Name the result"],
-  ["Reality", "Explain what happens today"],
-  ["People", "Make ownership and handoffs clear"],
-  ["Proof", "Define evidence and exceptions"],
-  ["Resources", "Keep the right templates close"],
-  ["HTML file", "Attach your existing process map"],
+const steps = [
+  ["Process details", "Six essentials"],
+  ["Templates", "Optional links"],
+  ["Process map", "Upload HTML"],
 ] as const;
-
-function isHtmlFile(file: File) {
-  return file.type === "text/html" || /\.html?$/i.test(file.name);
-}
-
 const emptyInput: ProcessStarterInput = {
   name: "",
   department: "Operations",
@@ -58,904 +46,402 @@ const emptyInput: ProcessStarterInput = {
   constraints: "",
   resourceLinks: [],
 };
-
-const exampleInput: ProcessStarterInput = {
-  name: "Customer enquiry handoff",
-  department: "Sales",
-  goal: "Every qualified enquiry reaches an accountable service owner within four business hours.",
-  problem:
-    "Enquiries arrive through email and WhatsApp. The owner is asked who should handle them, and some follow-ups are missed.",
-  currentMethod:
-    "Sales forwards a message to whichever manager is available. The receiving person sometimes replies, but ownership is not recorded.",
-  trigger: "A new qualified customer enquiry is received",
-  ownerRole: "Sales Operations Lead",
-  contributors: "Sales Coordinator, Service Lead",
-  inputs: "Customer details, request summary, priority, promised response time",
-  output:
-    "The enquiry has a named service owner and a recorded first-response deadline",
-  evidence: "CRM assignment record and customer acknowledgement",
-  exceptions:
-    "No service owner is available or the request is outside the normal service scope",
-  cadence: "Within four business hours",
-  constraints:
-    "The team currently uses Microsoft 365 and a lightweight service desk.",
-  resourceLinks: [
-    {
-      label: "Customer handoff message template",
-      resourceType: "TEMPLATE",
-      url: "https://docs.google.com/",
-      description: "Copy this before sending the customer handoff message.",
-    },
-  ],
-};
+const isHtmlFile = (file: File) =>
+  file.type === "text/html" || /\.html?$/i.test(file.name);
 
 export function ProcessStarter({ departments }: { departments: string[] }) {
+  const router = useRouter();
   const { localPrefix } = useTenantTheme();
-  const [section, setSection] = useState(0);
+  const [step, setStep] = useState(0);
   const [input, setInput] = useState<ProcessStarterInput>({
     ...emptyInput,
     department: departments[0] ?? "Operations",
   });
-  const [draft, setDraft] = useState<ProcessStarterDraft | null>(null);
-  const [diagramFile, setDiagramFile] = useState<File | null>(null);
-  const [diagramPreview, setDiagramPreview] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [htmlFile, setHtmlFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
-  const [saved, setSaved] = useState("Saved just now");
 
   const update = (key: keyof ProcessStarterInput, value: string) =>
     setInput((current) => ({ ...current, [key]: value }));
-
   useEffect(() => {
-    const savingTimeout = window.setTimeout(() => setSaved("Saving…"), 0);
     const timeout = window.setTimeout(() => {
       localStorage.setItem(
         "emilda:process-starter:draft",
-        JSON.stringify({ section, input, draft }),
+        JSON.stringify({ step, input, guardianName }),
       );
-      setSaved("Saved just now");
-    }, 650);
-    return () => {
-      window.clearTimeout(savingTimeout);
-      window.clearTimeout(timeout);
-    };
-  }, [draft, input, section]);
+    }, 450);
+    return () => window.clearTimeout(timeout);
+  }, [guardianName, input, step]);
 
-  const sectionValid = [
+  const valid = [
     input.name.trim().length >= 2 &&
-      input.department.trim().length >= 2 &&
-      input.goal.trim().length >= 5,
-    Boolean(input.problem.trim() && input.currentMethod.trim()),
-    Boolean(input.ownerRole.trim() && input.output.trim()),
-    Boolean(input.evidence.trim() && input.exceptions.trim()),
+      input.goal.trim().length >= 5 &&
+      input.ownerRole.trim().length >= 2 &&
+      guardianName.trim().length >= 2 &&
+      input.trigger.trim().length >= 2 &&
+      input.output.trim().length >= 2,
     input.resourceLinks.every(
       (item) => item.label.trim().length >= 2 && /^https?:\/\//i.test(item.url),
     ),
-    Boolean(diagramFile),
-  ][section];
+    Boolean(htmlFile),
+  ][step];
+  const hint = [
+    "Add the process name, goal, owner, guardian, trigger, and ending.",
+    "Complete each template name and link, or remove the empty row.",
+    "Attach the exported HTML process map.",
+  ][step];
 
-  const continuationHint = [
-    "Add a process name and the outcome it must achieve.",
-    "Describe the problem and how the work happens today.",
-    "Name the accountable owner and the finished outcome.",
-    "Add the evidence and a realistic exception.",
-    "Complete each resource link or remove it before continuing.",
-    "Attach an HTML file containing your process diagram.",
-  ][section];
-
-  const selectDiagram = (file: File | null) => {
-    if (diagramPreview) URL.revokeObjectURL(diagramPreview);
-    if (!file) {
-      setDiagramFile(null);
-      setDiagramPreview("");
-      return;
-    }
-    if (!isHtmlFile(file) || file.size > 25 * 1024 * 1024) {
-      toast.error("Use an HTML file up to 25 MB.");
-      return;
-    }
-    setDiagramFile(file);
-    setDiagramPreview("");
-  };
-
-  const addResourceLink = () =>
+  const addTemplate = () =>
     setInput((current) => ({
       ...current,
       resourceLinks: [
         ...current.resourceLinks,
-        {
-          label: "",
-          resourceType: "TEMPLATE",
-          url: "",
-          description: "",
-        },
+        { label: "", resourceType: "TEMPLATE", url: "", description: "" },
       ],
     }));
-
-  const updateResourceLink = (
-    index: number,
-    key: "label" | "resourceType" | "url" | "description",
-    value: string,
-  ) =>
+  const updateTemplate = (index: number, key: "label" | "url", value: string) =>
     setInput((current) => ({
       ...current,
       resourceLinks: current.resourceLinks.map((item, itemIndex) =>
         itemIndex === index ? { ...item, [key]: value } : item,
       ),
     }));
-
-  const removeResourceLink = (index: number) =>
+  const removeTemplate = (index: number) =>
     setInput((current) => ({
       ...current,
       resourceLinks: current.resourceLinks.filter(
         (_, itemIndex) => itemIndex !== index,
       ),
     }));
+  const selectHtml = (file: File | null) => {
+    if (!file) return setHtmlFile(null);
+    if (!isHtmlFile(file) || file.size > 25 * 1024 * 1024)
+      return toast.error("Choose an HTML file (.html or .htm) up to 25 MB.");
+    setHtmlFile(file);
+  };
 
-  const buildHtmlLibraryDraft = (fileName: string): ProcessStarterDraft => {
-    const trigger = input.trigger || `Start ${input.name.toLowerCase()}`;
-    const output = input.output || `${input.name} is completed`;
-    return {
-      purpose: `Keep the original HTML process map for ${input.name} in the Process Library.`,
-      businessProblem: input.problem,
-      goal: input.goal,
-      trigger,
-      inScope: "The attached HTML process map.",
-      outOfScope:
-        "Transcribing, changing, or interpreting the uploaded diagram.",
-      ownerRole: input.ownerRole,
-      contributors: input.contributors
-        .split(/\n|,|;/)
-        .map((item) => item.trim())
-        .filter(Boolean),
-      inputs: input.inputs
-        .split(/\n|,|;/)
-        .map((item) => item.trim())
-        .filter(Boolean),
-      output,
-      metrics: [
-        {
-          name: "HTML process map available",
-          target: "Attached to the process record",
-          cadence: input.cadence || "When the process changes",
-          dataSource: fileName,
-        },
-      ],
-      exceptions: [
-        {
-          scenario: input.exceptions,
-          response: "Update and attach a revised HTML file.",
-          escalation: input.ownerRole,
-        },
-      ],
-      graph: {
-        direction: "LR",
-        nodes: [
-          {
-            id: "start",
-            type: "START",
-            title: trigger,
-            position: { x: 0, y: 120 },
-          },
-          {
-            id: "end",
-            type: "END",
-            title: output,
-            position: { x: 360, y: 120 },
-          },
-        ],
-        edges: [{ id: "e1", source: "start", target: "end" }],
+  const buildDraft = (fileName: string): ProcessStarterDraft => ({
+    purpose: input.goal,
+    businessProblem: "Captured with the uploaded HTML process map.",
+    goal: input.goal,
+    trigger: input.trigger,
+    inScope: "The workflow shown in the uploaded HTML process map.",
+    outOfScope: "Editing or generating a replacement process map.",
+    ownerRole: input.ownerRole,
+    contributors: [guardianName],
+    inputs: ["Uploaded HTML process map"],
+    output: input.output,
+    metrics: [
+      {
+        name: "Process map available",
+        target: "HTML map attached to the Process Library record",
+        cadence: "When the process changes",
+        dataSource: fileName,
       },
-      assumptions: [
-        "The uploaded HTML is the source of truth; its diagram has not been transcribed or changed.",
+    ],
+    exceptions: [],
+    graph: {
+      direction: "LR",
+      nodes: [
+        {
+          id: "start",
+          type: "START",
+          title: input.trigger,
+          position: { x: 0, y: 120 },
+        },
+        {
+          id: "end",
+          type: "END",
+          title: input.output,
+          position: { x: 360, y: 120 },
+        },
       ],
-      unansweredQuestions: [
-        "Review the attached HTML file in the Process Library before approving or editing this process.",
-      ],
-    };
-  };
+      edges: [{ id: "start_to_end", source: "start", target: "end" }],
+    },
+    assumptions: [
+      "The uploaded HTML file is the complete process map and remains the source of truth.",
+    ],
+    unansweredQuestions: [],
+  });
 
-  const saveProcess = async (draftToSave: ProcessStarterDraft) => {
+  const createFromHtml = async () => {
+    if (!htmlFile || creating) return;
     setCreating(true);
-    const processKey =
-      input.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "") || `process-${Date.now()}`;
-    let processId = processKey;
-    let versionId = "draft";
-
-    const databaseConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-    if (databaseConfigured) {
-      const result = await createProcessFromStarter({
-        input,
-        draft: draftToSave,
-      });
-      if (!result.ok) {
-        setCreating(false);
-        toast.error(result.error);
-        return;
-      }
-      if (!result.processId || !result.versionId) {
-        setCreating(false);
-        toast.error("The draft was created but could not be opened.");
-        return;
-      }
-      processId = result.processId;
-      versionId = result.versionId;
-
-      if (diagramFile) {
-        const attachment = new FormData();
-        attachment.set("file", diagramFile);
-        attachment.set("processId", processId);
-        attachment.set("entityType", "VERSION");
-        attachment.set("entityId", versionId);
-        const upload = await fetch(`${localPrefix}/api/attachments`, {
-          method: "POST",
-          body: attachment,
-        });
-        if (!upload.ok)
-          toast.warning(
-            "The process was saved, but the original HTML file could not be attached.",
-          );
-      }
+    const result = await createProcessFromStarter({
+      input,
+      draft: buildDraft(htmlFile.name),
+    });
+    if (!result.ok || !result.processId || !result.versionId) {
+      setCreating(false);
+      toast.error(
+        result.ok ? "The process could not be opened." : result.error,
+      );
+      return;
     }
-
-    localStorage.setItem(
-      `emilda:starter-graph:${processId}:${versionId}`,
-      JSON.stringify(draftToSave.graph),
-    );
-    localStorage.setItem(
-      `emilda:starter-summary:${processId}:${versionId}`,
-      JSON.stringify({
-        name: input.name,
-        department: input.department,
-        draft: draftToSave,
-      }),
-    );
+    const attachment = new FormData();
+    attachment.set("file", htmlFile);
+    attachment.set("processId", result.processId);
+    attachment.set("entityType", "VERSION");
+    attachment.set("entityId", result.versionId);
+    const upload = await fetch(`${localPrefix}/api/attachments`, {
+      method: "POST",
+      body: attachment,
+    });
+    if (!upload.ok) {
+      setCreating(false);
+      const detail = await upload
+        .json()
+        .then((body: { error?: string }) => body.error)
+        .catch(() => undefined);
+      toast.error(
+        detail ??
+          "The process was created, but the HTML file could not be attached. Please try again.",
+      );
+      return;
+    }
     localStorage.removeItem("emilda:process-starter:draft");
-    toast.success("HTML process added to the Process Library");
-    window.location.assign(
-      databaseConfigured
-        ? `${localPrefix}/processes/${processId}`
-        : `${localPrefix}/processes/${processId}/versions/${versionId}/builder`,
-    );
+    toast.success("Process added to the Process Library");
+    router.push(`${localPrefix}/processes/${result.processId}`);
   };
-
-  const createProcessFromHtml = () => {
-    if (!diagramFile || creating) return;
-    void saveProcess(buildHtmlLibraryDraft(diagramFile.name));
-  };
-
-  if (draft) {
-    const operatingSteps = draft.graph.nodes.filter(
-      (node) => node.type !== "START" && node.type !== "END",
-    );
-    return (
-      <div className="space-y-5">
-        <section className="overflow-hidden rounded-2xl border bg-white">
-          <div className="border-b bg-[linear-gradient(135deg,color-mix(in_srgb,var(--brand-primary)_9%,white),white)] p-5 sm:p-7">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className="rounded-full bg-[var(--brand-primary)] text-white">
-                <FileCode2 /> HTML source attached
-              </Badge>
-              <Badge variant="outline" className="rounded-full bg-white">
-                Draft · human review required
-              </Badge>
-            </div>
-            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[var(--navy)]">
-              {input.name}
-            </h2>
-            <p className="mt-2 max-w-3xl leading-7 text-muted-foreground">
-              {draft.purpose}
-            </p>
-          </div>
-
-          <div className="grid gap-px bg-border sm:grid-cols-3">
-            {[
-              ["Department", input.department],
-              ["Process Owner", draft.ownerRole],
-              ["Trigger", draft.trigger],
-            ].map(([label, value]) => (
-              <div key={label} className="bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {label}
-                </p>
-                <p className="mt-2 text-sm font-medium leading-6">{value}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border bg-white p-5 sm:p-7">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="eyebrow">Original diagram source</p>
-              <h3 className="mt-1 text-xl font-semibold">
-                {operatingSteps.length
-                  ? `${operatingSteps.length} editable operating steps`
-                  : "HTML file retained without AI transcription"}
-              </h3>
-            </div>
-            <GitBranch className="size-6 text-[var(--brand-primary)]" />
-          </div>
-          {operatingSteps.length > 0 && (
-            <ol className="mt-5 space-y-3">
-              {operatingSteps.map((node, index) => (
-                <li key={node.id} className="flex gap-3 rounded-xl border p-4">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold">{node.title}</p>
-                      <Badge variant="outline" className="text-[10px]">
-                        {node.type}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {node.actor || "Role to confirm"}
-                      {node.timing ? ` · ${node.timing}` : ""}
-                    </p>
-                    {node.evidence && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Evidence: {node.evidence}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-
-        <div className="grid gap-5 lg:grid-cols-2">
-          <section className="rounded-2xl border bg-white p-5">
-            <p className="eyebrow">How success is measured</p>
-            {draft.metrics.map((metric) => (
-              <div
-                key={metric.name}
-                className="mt-3 rounded-xl bg-muted/60 p-4"
-              >
-                <p className="font-semibold">{metric.name}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {metric.target} · {metric.cadence}
-                </p>
-              </div>
-            ))}
-          </section>
-          <section className="rounded-2xl border bg-white p-5">
-            <p className="eyebrow">Likely exceptions</p>
-            {draft.exceptions.map((item) => (
-              <div
-                key={item.scenario}
-                className="mt-3 rounded-xl bg-muted/60 p-4"
-              >
-                <p className="font-semibold">{item.scenario}</p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {item.response}
-                </p>
-              </div>
-            ))}
-          </section>
-        </div>
-
-        {input.resourceLinks.length > 0 && (
-          <section className="rounded-2xl border bg-white p-5 sm:p-7">
-            <p className="eyebrow">Templates & document links</p>
-            <h3 className="mt-1 text-xl font-semibold">
-              Ready beside the process
-            </h3>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {input.resourceLinks.map((resource) => (
-                <a
-                  key={`${resource.label}-${resource.url}`}
-                  href={resource.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex min-h-16 items-center gap-3 rounded-xl border p-4 transition-colors hover:border-[var(--brand-primary)] hover:bg-[var(--surface-subtle)]"
-                >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)]">
-                    <Link2 className="size-5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-semibold">
-                      {resource.label}
-                    </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {resource.resourceType.toLowerCase()} · Open link
-                    </span>
-                  </span>
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {(draft.assumptions.length > 0 ||
-          draft.unansweredQuestions.length > 0) && (
-          <section className="grid gap-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-5 lg:grid-cols-2">
-            <div>
-              <h3 className="flex items-center gap-2 font-semibold text-amber-950">
-                <CircleAlert className="size-4" /> Assumptions to confirm
-              </h3>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-amber-950/80">
-                {draft.assumptions.map((item) => (
-                  <li key={item}>• {item}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="flex items-center gap-2 font-semibold text-amber-950">
-                <Lightbulb className="size-4" /> Questions still open
-              </h3>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-amber-950/80">
-                {draft.unansweredQuestions.map((item) => (
-                  <li key={item}>• {item}</li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
-
-        <div className="sticky bottom-4 flex flex-col-reverse gap-3 rounded-2xl border bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row">
-          <Button variant="outline" onClick={() => setDraft(null)}>
-            <ChevronLeft /> Change answers
-          </Button>
-          <Button
-            size="lg"
-            className="min-h-12 sm:ml-auto"
-            onClick={() => void saveProcess(draft)}
-            disabled={creating}
-          >
-            {creating ? <LoaderCircle className="animate-spin" /> : <Check />}
-            {creating ? "Saving to library…" : "Save to Process Library"}
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div>
       <div className="flex items-center justify-between gap-3 text-sm">
         <span>
-          {section + 1} of {sections.length} · {sections[section][0]}
+          {step + 1} of {steps.length} · {steps[step][0]}
         </span>
         <span className="text-muted-foreground" aria-live="polite">
-          {saved}
+          Saved locally
         </span>
       </div>
-      <Progress
-        value={((section + 1) / sections.length) * 100}
-        aria-label="Process starter completion"
-        className="mt-3 h-2"
-      />
-
-      <section className="mt-7 rounded-2xl border bg-white p-5 sm:p-7">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="eyebrow">{sections[section][0]}</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--navy)]">
-              {sections[section][1]}
-            </h2>
-          </div>
-          {section === 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setInput(exampleInput)}
-            >
-              Use example
-            </Button>
-          )}
-        </div>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Answer in plain language. These details describe the process, but
-          Emilda will only build the workflow from the diagram you attach in the
-          final step.
-        </p>
-
-        <div className="mt-6 grid gap-5">
-          {section === 0 && (
-            <>
-              <ShortField
-                id="process-name"
-                label="Process name"
-                value={input.name}
-                onChange={(value) => update("name", value)}
-                placeholder="For example: Customer enquiry handoff"
-              />
-              <div>
-                <Label htmlFor="department">Department</Label>
-                <Input
-                  id="department"
-                  list="client-departments"
-                  value={input.department}
-                  onChange={(event) => update("department", event.target.value)}
-                  placeholder="Operations"
-                  className="mt-2 h-12 rounded-xl"
-                />
-                <datalist id="client-departments">
-                  {departments.map((department) => (
-                    <option key={department} value={department} />
-                  ))}
-                </datalist>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Choose a saved client department so the library stays tidy.
-                </p>
-              </div>
-              <LongField
-                id="goal"
-                label="What outcome must this process achieve?"
-                value={input.goal}
-                onChange={(value) => update("goal", value)}
-                placeholder="Be specific enough that someone can tell whether it worked."
-              />
-            </>
-          )}
-          {section === 1 && (
-            <>
-              <LongField
-                id="problem"
-                label="What problem are you solving?"
-                value={input.problem}
-                onChange={(value) => update("problem", value)}
-                placeholder="What is unreliable, slow, invisible, or dependent on the owner?"
-              />
-              <LongField
-                id="current-method"
-                label="How does it really work today?"
-                value={input.currentMethod}
-                onChange={(value) => update("currentMethod", value)}
-                placeholder="Include WhatsApp, paper, workarounds, and informal handoffs."
-              />
-              <ShortField
-                id="trigger"
-                label="What starts the process?"
-                value={input.trigger}
-                onChange={(value) => update("trigger", value)}
-                placeholder="A request is received…"
-              />
-            </>
-          )}
-          {section === 2 && (
-            <>
-              <ShortField
-                id="owner-role"
-                label="One accountable Process Owner"
+      <Progress value={((step + 1) / steps.length) * 100} className="mt-3" />
+      <section className="mt-6 rounded-2xl border bg-white p-5 sm:p-7">
+        <p className="eyebrow">{steps[step][1]}</p>
+        {step === 0 && (
+          <div className="mt-5 grid gap-5">
+            <Field
+              id="name"
+              label="Process name"
+              value={input.name}
+              onChange={(value) => update("name", value)}
+              placeholder="e.g. Daily client update"
+            />
+            <Field
+              id="goal"
+              label="What is the goal of this process?"
+              value={input.goal}
+              onChange={(value) => update("goal", value)}
+              placeholder="What outcome should this process achieve?"
+              multiline
+            />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field
+                id="owner"
+                label="Who is the process owner?"
                 value={input.ownerRole}
                 onChange={(value) => update("ownerRole", value)}
-                placeholder="Use a role, for example: Operations Lead"
+                placeholder="Name or role"
               />
-              <ShortField
-                id="contributors"
-                label="Other roles involved"
-                value={input.contributors}
-                onChange={(value) => update("contributors", value)}
-                placeholder="Separate roles with commas"
+              <Field
+                id="guardian"
+                label="Who is the process guardian?"
+                value={guardianName}
+                onChange={setGuardianName}
+                placeholder="Name"
               />
-              <LongField
-                id="inputs"
-                label="What must be available to start?"
-                value={input.inputs}
-                onChange={(value) => update("inputs", value)}
-              />
-              <LongField
-                id="output"
-                label="What must exist when it finishes?"
-                value={input.output}
-                onChange={(value) => update("output", value)}
-              />
-            </>
-          )}
-          {section === 3 && (
-            <>
-              <LongField
-                id="evidence"
-                label="What proves it was completed correctly?"
-                value={input.evidence}
-                onChange={(value) => update("evidence", value)}
-                placeholder="A system record, photo, signed form, report…"
-              />
-              <LongField
-                id="exceptions"
-                label="What can realistically go wrong?"
-                value={input.exceptions}
-                onChange={(value) => update("exceptions", value)}
-              />
-              <ShortField
-                id="cadence"
-                label="Timing, deadline, or cadence"
-                value={input.cadence}
-                onChange={(value) => update("cadence", value)}
-                placeholder="Within 4 hours, weekly, event-based…"
-              />
-              <LongField
-                id="constraints"
-                label="Systems, policies, or limits to respect"
-                value={input.constraints}
-                onChange={(value) => update("constraints", value)}
-              />
-            </>
-          )}
-          {section === 4 && (
-            <div>
-              <div className="rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm leading-6 text-teal-950">
-                <p className="flex items-center gap-2 font-semibold">
-                  <Link2 className="size-4" aria-hidden="true" />
-                  Links only—no upload needed
-                </p>
-                <p className="mt-1">
-                  Add the Google Doc, Drive file, form, message template, or
-                  closure document people should use while running this process.
-                  You can also add these later.
-                </p>
-              </div>
-
-              <div className="mt-5 space-y-4">
-                {input.resourceLinks.map((resource, index) => (
-                  <div
-                    key={index}
-                    className="rounded-xl border bg-[var(--surface-subtle)] p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold">Link {index + 1}</p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeResourceLink(index)}
-                      >
-                        <Trash2 aria-hidden="true" />
-                        Remove
-                      </Button>
-                    </div>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      <ShortField
-                        id={`resource-label-${index}`}
-                        label="Name"
-                        value={resource.label}
-                        onChange={(value) =>
-                          updateResourceLink(index, "label", value)
-                        }
-                        placeholder="Closure message template"
-                      />
-                      <div>
-                        <Label htmlFor={`resource-type-${index}`}>Type</Label>
-                        <select
-                          id={`resource-type-${index}`}
-                          value={resource.resourceType}
-                          onChange={(event) =>
-                            updateResourceLink(
-                              index,
-                              "resourceType",
-                              event.target.value,
-                            )
-                          }
-                          className="mt-2 h-12 w-full rounded-xl border bg-white px-3 text-sm"
-                        >
-                          <option value="TEMPLATE">Template</option>
-                          <option value="DOCUMENT">Document</option>
-                          <option value="FORM">Form</option>
-                          <option value="EXAMPLE">Example</option>
-                          <option value="OTHER">Other</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="mt-4 grid gap-4">
-                      <ShortField
-                        id={`resource-url-${index}`}
-                        label="Link"
-                        value={resource.url}
-                        onChange={(value) =>
-                          updateResourceLink(index, "url", value)
-                        }
-                        placeholder="https://docs.google.com/..."
-                      />
-                      <ShortField
-                        id={`resource-description-${index}`}
-                        label="When should people use it? (optional)"
-                        value={resource.description}
-                        onChange={(value) =>
-                          updateResourceLink(index, "description", value)
-                        }
-                        placeholder="Use this when closing a customer request."
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-4 min-h-11"
-                onClick={addResourceLink}
-                disabled={input.resourceLinks.length >= 20}
-              >
-                <Plus aria-hidden="true" />
-                Add template or document link
-              </Button>
-              {input.resourceLinks.length === 0 && (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  No links yet. You can continue and add them from the process
-                  page later.
-                </p>
-              )}
             </div>
-          )}
-          {section === 5 && (
-            <div>
-              <div className="rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm leading-6 text-teal-950">
-                <p className="flex items-center gap-2 font-semibold">
-                  <FileCode2 className="size-4" aria-hidden="true" />
-                  Attach the original HTML process map
-                </p>
-                <p className="mt-1">
-                  Attach the exported HTML file. It will be stored with the new
-                  process in the Process Library exactly as supplied. This step
-                  does not use an OpenAI API key or AI processing.
-                </p>
-              </div>
-
-              <Label
-                htmlFor="diagram-photo"
-                className="mt-5 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-[var(--surface-subtle)] p-5 text-center transition-colors hover:border-[var(--brand-primary)]"
-              >
-                <FileCode2
-                  className="size-8 text-[var(--brand-primary)]"
-                  aria-hidden="true"
-                />
-                <span className="mt-3 font-semibold">
-                  {diagramFile ? "Replace HTML file" : "Attach HTML file"}
-                </span>
-                <span className="mt-1 text-xs text-muted-foreground">
-                  HTML (.html or .htm) · maximum 25 MB
-                </span>
-                <input
-                  id="diagram-photo"
-                  type="file"
-                  accept="text/html,.html,.htm"
-                  className="sr-only"
-                  onChange={(event) =>
-                    selectDiagram(event.target.files?.[0] ?? null)
-                  }
-                />
-              </Label>
-
-              {diagramFile && diagramPreview && (
-                <div className="mt-4 overflow-hidden rounded-2xl border bg-white">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={diagramPreview}
-                    alt="Uploaded process diagram preview"
-                    className="max-h-80 w-full object-contain"
+            <Field
+              id="trigger"
+              label="What starts this process?"
+              value={input.trigger}
+              onChange={(value) => update("trigger", value)}
+              placeholder="e.g. Each morning at 10:00"
+            />
+            <Field
+              id="ending"
+              label="What is the ending?"
+              value={input.output}
+              onChange={(value) => update("output", value)}
+              placeholder="What does complete look like?"
+            />
+          </div>
+        )}
+        {step === 1 && (
+          <div className="mt-5">
+            <p className="text-sm leading-6 text-muted-foreground">
+              Add Google Docs, Google Sheets, messages, or any other useful
+              template. This step is optional.
+            </p>
+            <div className="mt-5 space-y-3">
+              {input.resourceLinks.map((template, index) => (
+                <div
+                  key={index}
+                  className="grid gap-3 rounded-xl border p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]"
+                >
+                  <Input
+                    aria-label={`Template ${index + 1} name`}
+                    value={template.label}
+                    onChange={(event) =>
+                      updateTemplate(index, "label", event.target.value)
+                    }
+                    placeholder="Template name"
                   />
-                  <div className="flex items-center justify-between gap-3 border-t p-3 text-sm">
-                    <span className="min-w-0 truncate">{diagramFile.name}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => selectDiagram(null)}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {diagramFile && !diagramPreview && (
-                <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border bg-white p-4 text-sm">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)]">
-                      <FileCode2 className="size-5" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-semibold">
-                        {diagramFile.name}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        HTML file attached — it will be included in the Process
-                        Library without AI processing.
-                      </span>
-                    </span>
-                  </div>
+                  <Input
+                    aria-label={`Template ${index + 1} link`}
+                    value={template.url}
+                    onChange={(event) =>
+                      updateTemplate(index, "url", event.target.value)
+                    }
+                    placeholder="Google Doc or Sheet link"
+                    type="url"
+                  />
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    onClick={() => selectDiagram(null)}
+                    size="icon"
+                    aria-label={`Remove template ${index + 1}`}
+                    onClick={() => removeTemplate(index)}
                   >
-                    Remove
+                    <Trash2 className="size-4" />
                   </Button>
                 </div>
-              )}
+              ))}
             </div>
-          )}
-        </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4"
+              onClick={addTemplate}
+            >
+              <Plus aria-hidden="true" /> Add a template
+            </Button>
+          </div>
+        )}
+        {step === 2 && (
+          <div className="mt-5">
+            <div className="rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm leading-6 text-teal-950">
+              <p className="flex items-center gap-2 font-semibold">
+                <FileCode2 className="size-4" aria-hidden="true" /> Add the HTML
+                process map
+              </p>
+              <p className="mt-1">
+                The original HTML becomes the read-only process map in the
+                Process Library. No AI and no manual map editing.
+              </p>
+            </div>
+            <Label
+              htmlFor="process-html"
+              className="mt-5 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-[var(--surface-subtle)] p-5 text-center hover:border-[var(--brand-primary)]"
+            >
+              <FileCode2 className="size-8 text-[var(--brand-primary)]" />
+              <span className="mt-3 font-semibold">
+                {htmlFile ? "Replace HTML file" : "Attach HTML file"}
+              </span>
+              <span className="mt-1 text-xs text-muted-foreground">
+                .html or .htm · maximum 25 MB
+              </span>
+              <input
+                id="process-html"
+                type="file"
+                accept="text/html,.html,.htm"
+                className="sr-only"
+                onChange={(event) =>
+                  selectHtml(event.target.files?.[0] ?? null)
+                }
+              />
+            </Label>
+            {htmlFile && (
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border bg-white p-4 text-sm">
+                <span className="flex min-w-0 items-center gap-3">
+                  <FileCode2 className="size-5 shrink-0" />
+                  <span className="truncate font-semibold">
+                    {htmlFile.name}
+                  </span>
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => selectHtml(null)}
+                >
+                  Remove
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </section>
-
       <div className="mt-4 flex gap-3">
-        {section > 0 && (
-          <Button
-            variant="outline"
-            size="lg"
-            className="min-h-12"
-            onClick={() => setSection(section - 1)}
-          >
+        {step > 0 && (
+          <Button variant="outline" size="lg" onClick={() => setStep(step - 1)}>
             <ChevronLeft /> Back
           </Button>
         )}
-        {section < sections.length - 1 ? (
+        {step < steps.length - 1 ? (
           <Button
             size="lg"
-            className="min-h-12 flex-1"
-            disabled={!sectionValid}
-            onClick={() => setSection(section + 1)}
+            className="flex-1"
+            disabled={!valid}
+            onClick={() => setStep(step + 1)}
           >
             Continue <ArrowRight />
           </Button>
         ) : (
           <Button
             size="lg"
-            className="min-h-12 flex-1"
-            disabled={!sectionValid || creating}
-            onClick={createProcessFromHtml}
+            className="flex-1"
+            disabled={!valid || creating}
+            onClick={createFromHtml}
           >
             {creating ? <LoaderCircle className="animate-spin" /> : <Check />}
-            {creating
-              ? "Adding HTML process…"
-              : "Add HTML process to Process Library"}
+            {creating ? "Saving process…" : "Save to Process Library"}
           </Button>
         )}
       </div>
-      {!sectionValid && (
+      {!valid && (
         <p role="status" className="mt-3 text-sm text-muted-foreground">
-          To continue: {continuationHint}
+          To continue: {hint}
         </p>
       )}
     </div>
   );
 }
 
-function ShortField({
+function Field({
   id,
   label,
   value,
   onChange,
   placeholder,
+  multiline = false,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string;
+  placeholder: string;
+  multiline?: boolean;
 }) {
   return (
     <div>
       <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="mt-2 h-12 rounded-xl"
-      />
-    </div>
-  );
-}
-
-function LongField(props: Parameters<typeof ShortField>[0]) {
-  return (
-    <div>
-      <Label htmlFor={props.id}>{props.label}</Label>
-      <Textarea
-        id={props.id}
-        value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
-        placeholder={props.placeholder}
-        className="mt-2 min-h-28 rounded-xl"
-      />
+      {multiline ? (
+        <Textarea
+          id={id}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className="mt-2 min-h-24"
+        />
+      ) : (
+        <Input
+          id={id}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className="mt-2"
+        />
+      )}
     </div>
   );
 }

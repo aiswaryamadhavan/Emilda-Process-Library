@@ -166,10 +166,16 @@ test("tenant administration exposes real Google access controls", async ({
   await expect(page.getByText(/User ID ·/).first()).toBeVisible();
 });
 
-test("Guardian gets a transparent editable process starting draft", async ({
-  page,
-}) => {
+test("process creation keeps setup short and HTML-only", async ({ page }) => {
   await page.goto("/t/acme/processes/new");
+  if (await page.getByLabel("Email").isVisible()) {
+    await page.getByLabel("Email").fill("guardian@acme.emilda.test");
+    await page.getByLabel("Password").fill("EmildaDemo!2026");
+    await page.getByRole("button", { name: "Sign in with email" }).click();
+  }
+  await expect(page).toHaveURL(/\/t\/acme\/processes\/new$/);
+  await expect(page.getByRole("button", { name: "Change user" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
   expect(
     await page.evaluate(
       () =>
@@ -177,28 +183,31 @@ test("Guardian gets a transparent editable process starting draft", async ({
         document.documentElement.clientWidth,
     ),
   ).toBe(true);
-  await page.getByRole("button", { name: "Use example" }).click();
-  for (let section = 0; section < 4; section += 1)
-    await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByLabel("Name")).toHaveValue(
-    "Customer handoff message template",
-  );
+  await page.getByLabel("Process name").fill("Customer enquiry handoff");
+  await page
+    .getByLabel("What is the goal of this process?")
+    .fill("Give every customer enquiry a clear owner and response.");
+  await page
+    .getByLabel("Who is the process owner?")
+    .fill("Client success lead");
+  await page.getByLabel("Who is the process guardian?").fill("Sam Taylor");
+  await page
+    .getByLabel("What starts this process?")
+    .fill("New enquiry received");
+  await page
+    .getByLabel("What is the ending?")
+    .fill("Customer receives a response");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Add a template" }).click();
+  await page.getByLabel("Template 1 name").fill("Customer update");
+  await page.getByLabel("Template 1 link").fill("https://docs.google.com/");
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel(/Attach HTML file/).setInputFiles(processHtml);
   await expect(page.getByText("customer-enquiry-process.html")).toBeVisible();
-  await page
-    .getByRole("button", { name: "Add HTML process to Process Library" })
-    .click();
-  await expect(page).toHaveURL(
-    /customer-enquiry-handoff\/versions\/draft\/builder/,
-  );
   await expect(
-    page.getByRole("heading", { name: "Editable process map", level: 1 }),
+    page.getByRole("button", { name: "Save to Process Library" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: /Edit Mermaid/ }).click();
-  await expect(page.getByLabel("Mermaid source")).toHaveValue(
-    /qualified enquiry received/i,
-  );
+  await expect(page.getByText(/No AI and no manual map editing/)).toBeVisible();
 });
 test("Guardian uploads photo evidence", async ({ page }) => {
   await page.goto("/t/acme/audits/scorecard-week-38");

@@ -26,9 +26,9 @@ export default async function NewProcessPage() {
 
   return (
     <FocusShell
-      eyebrow="New process · AI-assisted"
+      eyebrow="New process"
       title="Start with what you know"
-      subtitle="Answer a few practical questions. Emilda will create an editable starting process, clearly separating suggestions from confirmed facts."
+      subtitle="Add the essential details, any useful templates, and the HTML process map. The uploaded map is saved as-is in the Process Library."
     >
       <ProcessStarter departments={departments} />
     </FocusShell>

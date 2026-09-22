@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { tenantPortalPath } from "@/lib/tenant";
+import { resolveTenantRoute, tenantPortalPath } from "@/lib/tenant";
 import { processGraphSchema } from "@/lib/domain/types";
 import { clientProfileSchema } from "@/lib/domain/client-profile";
 import {
@@ -228,7 +228,33 @@ export async function openPlatformTenant(formData: FormData) {
 async function resolveCurrentTenant() {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { supabase: null, tenantId: null };
-  const tenantSlug = (await headers()).get("x-tenant-slug");
+  const requestHeaders = await headers();
+  const proxyTenantId = z
+    .string()
+    .uuid()
+    .safeParse(requestHeaders.get("x-tenant-id"));
+  if (proxyTenantId.success) return { supabase, tenantId: proxyTenantId.data };
+  let tenantSlug = requestHeaders.get("x-tenant-slug");
+  // Server Actions are posted by Next.js and do not always retain the proxy's
+  // custom tenant header. The same-origin referrer still contains the tenant
+  // path, so use it as a safe fallback for actions started within a portal.
+  if (!tenantSlug) {
+    const referer = requestHeaders.get("referer");
+    if (referer) {
+      try {
+        const url = new URL(referer);
+        tenantSlug =
+          resolveTenantRoute(
+            url.host,
+            url.pathname,
+            process.env.ROOT_DOMAIN,
+            process.env.TENANT_PATH_HOST,
+          )?.slug ?? null;
+      } catch {
+        tenantSlug = null;
+      }
+    }
+  }
   if (!tenantSlug) return { supabase, tenantId: null };
   const { data } = await supabase
     .from("tenants")

@@ -155,16 +155,28 @@ export function AppShell({
             </span>
           </div>
           {mode === "tenant" && (
-            <form action={tenantHref("/auth/sign-out")} method="post">
-              <Button
-                type="submit"
-                variant="ghost"
-                className="mt-1 min-h-10 w-full justify-start gap-2 px-3 text-sm text-muted-foreground hover:text-foreground"
-              >
-                <LogOut className="size-4" aria-hidden="true" />
-                Log out
-              </Button>
-            </form>
+            <div className="mt-1 grid grid-cols-2 gap-1">
+              <form action={tenantHref("/auth/sign-out")} method="post">
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  className="min-h-10 w-full justify-start gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <UserRound className="size-3.5" aria-hidden="true" />
+                  Change user
+                </Button>
+              </form>
+              <form action={tenantHref("/auth/sign-out")} method="post">
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  className="min-h-10 w-full justify-start gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <LogOut className="size-3.5" aria-hidden="true" />
+                  Log out
+                </Button>
+              </form>
+            </div>
           )}
           {mode === "tenant" && !process.env.NEXT_PUBLIC_SUPABASE_URL && (
             <details className="group mt-1">

@@ -118,14 +118,27 @@ test("live Guardian stores an attached HTML map in a process draft", async ({
   page,
 }) => {
   await signIn(page, "guardian@acme.emilda.test", "/t/acme/processes/new");
-  await page.getByRole("button", { name: "Use example" }).click();
-  for (let section = 0; section < 4; section += 1)
-    await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Process name").fill("Customer enquiry handoff");
+  await page
+    .getByLabel("What is the goal of this process?")
+    .fill("Give every customer enquiry a clear owner and response.");
+  await page
+    .getByLabel("Who is the process owner?")
+    .fill("Client success lead");
+  await page.getByLabel("Who is the process guardian?").fill("Sam Taylor");
+  await page
+    .getByLabel("What starts this process?")
+    .fill("New enquiry received");
+  await page
+    .getByLabel("What is the ending?")
+    .fill("Customer receives a response");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Add a template" }).click();
+  await page.getByLabel("Template 1 name").fill("Customer update");
+  await page.getByLabel("Template 1 link").fill("https://docs.google.com/");
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel(/Attach HTML file/).setInputFiles(processHtml);
-  await page
-    .getByRole("button", { name: "Add HTML process to Process Library" })
-    .click();
+  await page.getByRole("button", { name: "Save to Process Library" }).click();
   await expect(page).toHaveURL(/\/t\/acme\/processes\/[0-9a-f-]{36}$/);
   await expect(page.getByTitle("Uploaded HTML process map")).toBeVisible();
   await expect(
@@ -137,7 +150,7 @@ test("live Guardian stores an attached HTML map in a process draft", async ({
   await page.goto(`/t/acme/processes/${processId}`);
   await page.getByRole("tab", { name: /Templates/ }).click();
   await expect(
-    page.getByRole("heading", { name: "Customer handoff message template" }),
+    page.getByRole("heading", { name: "Customer update" }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Open / download" }),

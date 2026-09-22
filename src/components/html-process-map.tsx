@@ -31,7 +31,7 @@ export function HtmlProcessMap({
       <iframe
         title="Uploaded HTML process map"
         src={`${downloadUrl}?inline=1`}
-        sandbox=""
+        sandbox="allow-scripts"
         referrerPolicy="no-referrer"
         className="h-[680px] w-full rounded-xl border bg-white"
       />

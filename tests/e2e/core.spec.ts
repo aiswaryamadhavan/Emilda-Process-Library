@@ -187,17 +187,8 @@ test("Guardian gets a transparent editable process starting draft", async ({
   await page.getByLabel(/Attach HTML file/).setInputFiles(processHtml);
   await expect(page.getByText("customer-enquiry-process.html")).toBeVisible();
   await page
-    .getByRole("button", { name: "Review & save to Process Library" })
+    .getByRole("button", { name: "Add HTML process to Process Library" })
     .click();
-  await expect(
-    page.getByRole("heading", { name: "Customer enquiry handoff" }),
-  ).toBeVisible();
-  await expect(page.getByText("Draft · human review required")).toBeVisible();
-  await expect(page.getByText("Assumptions to confirm")).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /Customer handoff message template/ }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Save to Process Library" }).click();
   await expect(page).toHaveURL(
     /customer-enquiry-handoff\/versions\/draft\/builder/,
   );

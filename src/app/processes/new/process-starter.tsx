@@ -99,10 +99,6 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
   const [draft, setDraft] = useState<ProcessStarterDraft | null>(null);
   const [diagramFile, setDiagramFile] = useState<File | null>(null);
   const [diagramPreview, setDiagramPreview] = useState("");
-  const [source, setSource] = useState<
-    "AI" | "STARTER_TEMPLATE" | "HTML_UPLOAD"
-  >("HTML_UPLOAD");
-  const [notice, setNotice] = useState("");
   const [creating, setCreating] = useState(false);
   const [saved, setSaved] = useState("Saved just now");
 
@@ -114,7 +110,7 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
     const timeout = window.setTimeout(() => {
       localStorage.setItem(
         "emilda:process-starter:draft",
-        JSON.stringify({ section, input, draft, source, notice }),
+        JSON.stringify({ section, input, draft }),
       );
       setSaved("Saved just now");
     }, 650);
@@ -122,7 +118,7 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
       window.clearTimeout(savingTimeout);
       window.clearTimeout(timeout);
     };
-  }, [draft, input, notice, section, source]);
+  }, [draft, input, section]);
 
   const sectionValid = [
     input.name.trim().length >= 2 &&
@@ -195,15 +191,10 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
       ),
     }));
 
-  const prepareHtmlForLibrary = () => {
-    if (!diagramFile) return;
+  const buildHtmlLibraryDraft = (fileName: string): ProcessStarterDraft => {
     const trigger = input.trigger || `Start ${input.name.toLowerCase()}`;
     const output = input.output || `${input.name} is completed`;
-    setSource("HTML_UPLOAD");
-    setNotice(
-      "Your original HTML file will be stored with this process in the Process Library. No AI processing has been used.",
-    );
-    setDraft({
+    return {
       purpose: `Keep the original HTML process map for ${input.name} in the Process Library.`,
       businessProblem: input.problem,
       goal: input.goal,
@@ -226,7 +217,7 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
           name: "HTML process map available",
           target: "Attached to the process record",
           cadence: input.cadence || "When the process changes",
-          dataSource: diagramFile.name,
+          dataSource: fileName,
         },
       ],
       exceptions: [
@@ -260,11 +251,10 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
       unansweredQuestions: [
         "Review the attached HTML file in the Process Library before approving or editing this process.",
       ],
-    });
+    };
   };
 
-  const createDraft = async () => {
-    if (!draft) return;
+  const saveProcess = async (draftToSave: ProcessStarterDraft) => {
     setCreating(true);
     const processKey =
       input.name
@@ -274,8 +264,12 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
     let processId = processKey;
     let versionId = "draft";
 
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      const result = await createProcessFromStarter({ input, draft });
+    const databaseConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    if (databaseConfigured) {
+      const result = await createProcessFromStarter({
+        input,
+        draft: draftToSave,
+      });
       if (!result.ok) {
         setCreating(false);
         toast.error(result.error);
@@ -308,20 +302,28 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
 
     localStorage.setItem(
       `emilda:starter-graph:${processId}:${versionId}`,
-      JSON.stringify(draft.graph),
+      JSON.stringify(draftToSave.graph),
     );
     localStorage.setItem(
       `emilda:starter-summary:${processId}:${versionId}`,
-      JSON.stringify({ name: input.name, department: input.department, draft }),
+      JSON.stringify({
+        name: input.name,
+        department: input.department,
+        draft: draftToSave,
+      }),
     );
     localStorage.removeItem("emilda:process-starter:draft");
-    toast.success("Editable process draft created");
-    // A full navigation avoids stalled RSC transitions while the large builder
-    // payload is rendered and preserves the tenant-prefixed destination.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    toast.success("HTML process added to the Process Library");
     window.location.assign(
-      `${localPrefix}/processes/${processId}/versions/${versionId}/builder`,
+      databaseConfigured
+        ? `${localPrefix}/processes/${processId}`
+        : `${localPrefix}/processes/${processId}/versions/${versionId}/builder`,
     );
+  };
+
+  const createProcessFromHtml = () => {
+    if (!diagramFile || creating) return;
+    void saveProcess(buildHtmlLibraryDraft(diagramFile.name));
   };
 
   if (draft) {
@@ -345,9 +347,6 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
             </h2>
             <p className="mt-2 max-w-3xl leading-7 text-muted-foreground">
               {draft.purpose}
-            </p>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              {notice}
             </p>
           </div>
 
@@ -505,7 +504,7 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
           <Button
             size="lg"
             className="min-h-12 sm:ml-auto"
-            onClick={createDraft}
+            onClick={() => void saveProcess(draft)}
             disabled={creating}
           >
             {creating ? <LoaderCircle className="animate-spin" /> : <Check />}
@@ -900,10 +899,13 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
           <Button
             size="lg"
             className="min-h-12 flex-1"
-            disabled={!sectionValid}
-            onClick={prepareHtmlForLibrary}
+            disabled={!sectionValid || creating}
+            onClick={createProcessFromHtml}
           >
-            <Check /> Review & save to Process Library
+            {creating ? <LoaderCircle className="animate-spin" /> : <Check />}
+            {creating
+              ? "Adding HTML process…"
+              : "Add HTML process to Process Library"}
           </Button>
         )}
       </div>

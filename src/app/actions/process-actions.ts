@@ -7,7 +7,10 @@ import {
   canCreateProcesses,
   DEMO_USER_COOKIE,
 } from "@/lib/allowed-users";
-import { createDemoProcessFromStarter } from "@/lib/demo-process-store";
+import {
+  createDemoProcessFromStarter,
+  reviseDemoProcessFromStarter,
+} from "@/lib/demo-process-store";
 import { demoTenantId, resolveDemoTenantSlug } from "@/lib/demo-tenant";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveTenantRoute, tenantPortalPath } from "@/lib/tenant";
@@ -416,6 +419,139 @@ export async function createProcessFromStarter(input: unknown) {
     processId: String(data.processId),
     versionId: String(data.versionId),
     processKey: String(data.processKey),
+  };
+}
+
+const starterRevisionSchema = starterCreationSchema.extend({
+  processId: z.string().uuid(),
+});
+
+export async function reviseProcessFromStarter(input: unknown) {
+  const parsed = starterRevisionSchema.safeParse(input);
+  if (!parsed.success)
+    return {
+      ok: false,
+      error:
+        "The revision is incomplete. Review each step and try saving again.",
+    };
+  const { supabase, tenantId, tenantSlug, demo } = await resolveCurrentTenant();
+  if (!tenantId || !tenantSlug)
+    return { ok: false, error: "Client portal could not be verified." };
+
+  const filteredInput = {
+    ...parsed.data.input,
+    resourceLinks: parsed.data.input.resourceLinks.filter(
+      (link) => link.label.trim() && link.url.trim(),
+    ),
+  };
+
+  if (demo) {
+    const userEmail = (await cookies()).get(DEMO_USER_COOKIE)?.value;
+    if (!canCreateProcesses(userEmail)) {
+      return {
+        ok: false,
+        error: "Only Aishwarya can revise processes right now.",
+      };
+    }
+    const revised = await reviseDemoProcessFromStarter(
+      tenantSlug,
+      parsed.data.processId,
+      filteredInput,
+      parsed.data.draft,
+      parsed.data.guardianName,
+    );
+    if (!revised)
+      return { ok: false, error: "This process could not be found." };
+    revalidatePath("/processes");
+    revalidatePath(`/processes/${parsed.data.processId}`);
+    return { ok: true, ...revised };
+  }
+
+  if (!supabase)
+    return { ok: false, error: "Client portal could not be verified." };
+
+  const { data: processRow } = await supabase
+    .from("processes")
+    .select("id, current_active_version_id")
+    .eq("id", parsed.data.processId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (!processRow)
+    return { ok: false, error: "This process could not be found." };
+
+  const { data: currentVersion } = await supabase
+    .from("process_versions")
+    .select("id, status")
+    .eq("process_id", parsed.data.processId)
+    .order("major_version", { ascending: false })
+    .order("minor_version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let targetVersionId = currentVersion?.id ?? "";
+  if (!targetVersionId)
+    return { ok: false, error: "This process has no version to update." };
+
+  if (currentVersion?.status === "ACTIVE") {
+    const cloned = await cloneProcessVersion({
+      processId: parsed.data.processId,
+      changeReason: "Updated from Process Library",
+      kind: "IMPROVEMENT",
+    });
+    if (!cloned.ok || !cloned.versionId)
+      return {
+        ok: false,
+        error:
+          cloned.error ??
+          "You need Process Guardian access to create a new version.",
+      };
+    targetVersionId = cloned.versionId;
+  }
+
+  const { error: versionError } = await supabase
+    .from("process_versions")
+    .update({
+      purpose: parsed.data.draft.purpose,
+      business_problem: parsed.data.draft.businessProblem,
+      goal: parsed.data.draft.goal,
+      trigger_description: parsed.data.draft.trigger,
+      current_state: filteredInput.problem || filteredInput.goal,
+      future_state: filteredInput.output,
+      change_reason: "Updated from Process Library",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", targetVersionId)
+    .eq("process_id", parsed.data.processId);
+
+  if (versionError)
+    return {
+      ok: false,
+      error: "This revision could not be saved. Check your access and try again.",
+    };
+
+  await supabase
+    .from("processes")
+    .update({ name: filteredInput.name.trim() })
+    .eq("id", parsed.data.processId);
+
+  const { error: graphError } = await supabase.rpc("save_process_graph", {
+    p_process_id: parsed.data.processId,
+    p_version_id: targetVersionId,
+    p_graph: parsed.data.draft.graph,
+  });
+  if (graphError)
+    return {
+      ok: false,
+      error: "The process map could not be saved for this version.",
+    };
+
+  revalidatePath("/processes");
+  revalidatePath(`/processes/${parsed.data.processId}`);
+  return {
+    ok: true,
+    processId: parsed.data.processId,
+    versionId: targetVersionId,
+    processKey: "",
   };
 }
 

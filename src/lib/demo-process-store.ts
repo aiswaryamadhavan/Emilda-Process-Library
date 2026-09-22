@@ -12,6 +12,14 @@ import type {
 } from "@/lib/domain/process-starter";
 import type { ProcessSummary, ProcessWorkspace } from "@/lib/data/processes";
 
+type DemoVersionHistoryEntry = {
+  id: string;
+  label: string;
+  status: string;
+  changeReason: string;
+  createdAt: string;
+};
+
 type DemoProcessRecord = {
   id: string;
   processKey: string;
@@ -21,6 +29,9 @@ type DemoProcessRecord = {
   owner: string;
   guardian: string;
   versionId: string;
+  majorVersion: number;
+  minorVersion: number;
+  versionHistory: DemoVersionHistoryEntry[];
   purpose: string;
   goal: string;
   problemSolved: string;
@@ -85,13 +96,19 @@ function computeNextDue(
   return formatDate(next.toISOString(), "Not scheduled");
 }
 
+function versionLabel(record: DemoProcessRecord) {
+  const major = record.majorVersion ?? 1;
+  const minor = record.minorVersion ?? 0;
+  return `${major}.${minor}`;
+}
+
 function toSummary(record: DemoProcessRecord): ProcessSummary {
   return {
     id: record.id,
     name: record.name,
     department: record.department,
     owner: record.owner,
-    version: "1.0",
+    version: versionLabel(record),
     versionId: record.versionId,
     health: record.health,
     lastAudit: formatDate(record.lastGovernanceAt, "Not audited"),
@@ -133,11 +150,18 @@ function toWorkspace(record: DemoProcessRecord): ProcessWorkspace {
     versions: [
       {
         id: record.versionId,
-        label: "1.0",
+        label: versionLabel(record),
         status: record.status,
-        changeReason: "Initial process library entry",
+        changeReason: "Current version",
         createdAt: formatDate(record.createdAt, "Recently"),
       },
+      ...(record.versionHistory ?? []).map((entry) => ({
+        id: entry.id,
+        label: entry.label,
+        status: entry.status,
+        changeReason: entry.changeReason,
+        createdAt: formatDate(entry.createdAt, "Recently"),
+      })),
     ],
     resourceLinks: record.resourceLinks,
     htmlMap: record.htmlMap,
@@ -212,6 +236,9 @@ export async function createDemoProcessFromStarter(
     owner: input.ownerRole.trim(),
     guardian: guardianName.trim(),
     versionId,
+    majorVersion: 1,
+    minorVersion: 0,
+    versionHistory: [],
     purpose: draft.purpose,
     goal: draft.goal,
     problemSolved: input.problem.trim(),
@@ -241,6 +268,61 @@ export async function createDemoProcessFromStarter(
   return {
     processId: id,
     versionId,
+    processKey: record.processKey,
+  };
+}
+
+export async function reviseDemoProcessFromStarter(
+  tenantSlug: string,
+  processId: string,
+  input: ProcessStarterInput,
+  draft: ProcessStarterDraft,
+  guardianName: string,
+) {
+  const store = await readStore();
+  const record = store.processes.find(
+    (item) => item.tenantSlug === tenantSlug && item.id === processId,
+  );
+  if (!record) return null;
+
+  const major = record.majorVersion ?? 1;
+  const minor = record.minorVersion ?? 0;
+  record.versionHistory = record.versionHistory ?? [];
+  record.versionHistory.unshift({
+    id: record.versionId,
+    label: versionLabel(record),
+    status: record.status,
+    changeReason: "Previous version before Process Library edit",
+    createdAt: new Date().toISOString(),
+  });
+
+  record.versionId = randomUUID();
+  record.minorVersion = minor + 1;
+  record.name = input.name.trim();
+  record.department = input.department;
+  record.owner = input.ownerRole.trim();
+  record.guardian = guardianName.trim();
+  record.purpose = draft.purpose;
+  record.goal = draft.goal;
+  record.problemSolved = input.problem.trim();
+  record.trigger = draft.trigger;
+  record.output = input.output.trim();
+  record.auditDuration = input.cadence.trim() || "Monthly";
+  record.auditQuestions = input.auditQuestions.trim();
+  record.resourceLinks = input.resourceLinks.map((link, index) => ({
+    id: `demo-link-${record.versionId.slice(0, 8)}-${index}`,
+    label: link.label,
+    resourceType: link.resourceType,
+    url: link.url,
+    description: link.description ?? "",
+  }));
+  record.graph = draft.graph;
+
+  await writeStore(store);
+
+  return {
+    processId: record.id,
+    versionId: record.versionId,
     processKey: record.processKey,
   };
 }

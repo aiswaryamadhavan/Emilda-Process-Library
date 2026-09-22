@@ -38,7 +38,7 @@ export default async function NewProcessPage() {
     <FocusShell
       eyebrow="New process"
       title="Start with what you know"
-      subtitle="Add the essential details, any useful templates, and the HTML process map. The uploaded map is saved as-is in the Process Library."
+      subtitle="Add the process details, templates and links, then attach the HTML map. Review everything before you save."
     >
       <ProcessStarter departments={departments} />
     </FocusShell>

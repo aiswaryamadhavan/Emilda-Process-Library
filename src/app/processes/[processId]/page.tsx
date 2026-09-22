@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { canDesignProcess } from "@/lib/access";
+import { canCreateProcesses, DEMO_USER_COOKIE } from "@/lib/allowed-users";
+import { cookies } from "next/headers";
 import { getProcessWorkspace } from "@/lib/data/processes";
 
 export default async function ProcessPage({
@@ -33,6 +35,10 @@ export default async function ProcessPage({
   const { processId } = await params;
   const process = await getProcessWorkspace(processId);
   if (!process) notFound();
+
+  const demoEmail = (await cookies()).get(DEMO_USER_COOKIE)?.value;
+  const canEdit =
+    (await canDesignProcess(processId)) || canCreateProcesses(demoEmail);
 
   const editable =
     ["DRAFT", "CHANGES_REQUESTED"].includes(process.status) &&
@@ -77,17 +83,29 @@ export default async function ProcessPage({
             value={process.nextAudit}
           />
         </div>
-        <div className="mt-5 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-5 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
             {process.department} · Version{" "}
             <strong className="text-foreground">{process.version}</strong>
+            {process.versions.length > 1 && (
+              <span> · {process.versions.length} versions saved</span>
+            )}
           </p>
-          <Button asChild className="min-h-11 w-full sm:w-auto">
-            <TenantLink href={primaryHref}>
-              {primaryLabel}
-              <ArrowRight />
-            </TenantLink>
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            {canEdit && (
+              <Button asChild variant="outline" className="min-h-11 w-full sm:w-auto">
+                <TenantLink href={`/processes/${process.id}/edit`}>
+                  Edit process
+                </TenantLink>
+              </Button>
+            )}
+            <Button asChild className="min-h-11 w-full sm:w-auto">
+              <TenantLink href={primaryHref}>
+                {primaryLabel}
+                <ArrowRight />
+              </TenantLink>
+            </Button>
+          </div>
           {editable && process.status === "DRAFT" && (
             <DeleteProcessButton
               processId={process.id}

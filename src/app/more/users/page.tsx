@@ -9,40 +9,10 @@ import {
   type TenantMemberView,
 } from "./user-management";
 
-const demoMembers: TenantMemberView[] = [
-  {
-    id: "demo-admin",
-    userId: "20000000-0000-4000-8000-000000000001",
-    name: "Priya Nair",
-    email: "admin@acme.emilda.test",
-    provider: "email",
-    roles: ["TENANT_ADMIN"],
-    status: "ACTIVE",
-  },
-  {
-    id: "demo-guardian",
-    userId: "20000000-0000-4000-8000-000000000002",
-    name: "Vishnu Rao",
-    email: "guardian@acme.emilda.test",
-    provider: "email",
-    roles: ["PROCESS_GUARDIAN"],
-    status: "ACTIVE",
-  },
-  {
-    id: "demo-owner",
-    userId: "20000000-0000-4000-8000-000000000003",
-    name: "Aishwarya Menon",
-    email: "owner@acme.emilda.test",
-    provider: "email",
-    roles: ["PROCESS_OWNER"],
-    status: "ACTIVE",
-  },
-];
-
 export default async function UsersPage() {
   const tenantSlug = (await headers()).get("x-tenant-slug") ?? "acme";
   const supabase = await createSupabaseServerClient();
-  let members = demoMembers;
+  let members: TenantMemberView[] = [];
   let invitations: TenantInvitationView[] = [];
   let canInvite = true;
 

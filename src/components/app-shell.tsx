@@ -11,7 +11,6 @@ import {
   LogOut,
   Search,
   Settings2,
-  Sparkles,
   UserRound,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -177,34 +176,6 @@ export function AppShell({
                 </Button>
               </form>
             </div>
-          )}
-          {mode === "tenant" && !process.env.NEXT_PUBLIC_SUPABASE_URL && (
-            <details className="group mt-1">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
-                <Sparkles className="size-3.5" />
-                Switch demo role
-              </summary>
-              <div className="mt-1 grid gap-1 rounded-lg border bg-white p-1 shadow-sm">
-                <Link
-                  className="rounded-md px-3 py-2 text-xs hover:bg-muted"
-                  href={tenantHref("/")}
-                >
-                  Client Owner
-                </Link>
-                <Link
-                  className="rounded-md px-3 py-2 text-xs hover:bg-muted"
-                  href={`${tenantHref("/")}?role=guardian`}
-                >
-                  Process Guardian
-                </Link>
-                <Link
-                  className="rounded-md px-3 py-2 text-xs hover:bg-muted"
-                  href={`${tenantHref("/")}?role=process-owner`}
-                >
-                  Process Owner
-                </Link>
-              </div>
-            </details>
           )}
         </div>
       </aside>

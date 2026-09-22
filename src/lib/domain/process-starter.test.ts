@@ -21,6 +21,8 @@ const input: ProcessStarterInput = {
   exceptions: "No service owner is available",
   cadence: "Within four business hours",
   constraints: "Use the existing service desk.",
+  auditQuestions:
+    "Was the enquiry assigned within four hours? Was the first response sent?",
   resourceLinks: [],
 };
 

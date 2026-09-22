@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isAllowedLoginEmail } from "@/lib/allowed-users";
+import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { tenantPortalPath } from "@/lib/tenant";
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const next = request.nextUrl.searchParams.get("next") ?? "/";
@@ -19,27 +20,34 @@ export async function GET(request: NextRequest) {
       new URL("/auth/error?reason=exchange_failed", request.url),
     );
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !isAllowedLoginEmail(user.email)) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(
+      new URL("/auth/error?reason=not_allowed", request.url),
+    );
+  }
+
   const { data: acceptedTenants } = await supabase.rpc(
     "accept_my_tenant_invitations",
   );
   const { data: platformAdmin } = await supabase.rpc("is_platform_admin");
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
-  const firstTenant = Array.isArray(acceptedTenants)
-    ? acceptedTenants[0]
-    : null;
+  const safeNext =
+    next.startsWith("/") && !next.startsWith("//") ? next : "/processes";
   const requestHost =
     request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  const destination =
-    safeNext === "/" && platformAdmin
-      ? "/admin/tenants"
-      : safeNext === "/" && firstTenant?.slug
-        ? tenantPortalPath(
-            firstTenant.slug,
-            requestHost,
-            process.env.ROOT_DOMAIN,
-            process.env.TENANT_PATH_HOST,
-          )
-        : safeNext;
+  const destination = await resolvePostLoginDestination({
+    safeNext,
+    platformAdmin: platformAdmin === true,
+    acceptedTenants,
+    supabase,
+    userId: user.id,
+    requestHost,
+    rootDomain: process.env.ROOT_DOMAIN,
+    tenantPathHost: process.env.TENANT_PATH_HOST,
+  });
 
   return NextResponse.redirect(new URL(destination, request.url));
 }

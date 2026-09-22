@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PwaRegister } from "@/components/pwa-register";
 import { TenantProvider } from "@/components/tenant-provider";
+import {
+  DEMO_USER_COOKIE,
+  findAllowedUser,
+} from "@/lib/allowed-users";
+import { EMILDA_PROCESS_LIBRARY } from "@/lib/branding";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { decodeTenantShellContext } from "@/lib/tenant";
 
@@ -24,12 +29,12 @@ const geistMono = Geist_Mono({
 });
 
 function displayRole(role: string, email?: string | null) {
-  if (email?.toLowerCase() === "paul@emildasolutions.com") return "Super Admin";
-  if (email?.toLowerCase() === "aiswarya@emildasolutions.com") return "Admin";
+  const allowed = findAllowedUser(email);
+  if (allowed) return allowed.role;
   return (
     {
       "Tenant Admin": "Admin",
-      "Process Owner": "Client",
+      "Process Owner": "Owner",
       Viewer: "Employee",
     }[role] ?? role
   );
@@ -69,28 +74,26 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     requestHeaders.get("x-tenant-path-prefix") ??
     (!tenantSlug || isTenantSubdomain ? "" : `/t/${tenantSlug}`);
   let tenant = tenantSlug
-    ? tenantSlug === "northstar"
-      ? {
-          name: "Northstar Services",
-          primary: "#5b4fa3",
-          accent: "#9b8ce0",
-          navy: "#302b52",
-        }
-      : {
-          name: "Acme Operations",
-          primary: "#1f6d62",
-          accent: "#74d1bf",
-          navy: "#17324d",
-        }
+    ? {
+        name: EMILDA_PROCESS_LIBRARY,
+        primary: tenantSlug === "northstar" ? "#5b4fa3" : "#1f6d62",
+        accent: tenantSlug === "northstar" ? "#9b8ce0" : "#74d1bf",
+        navy: tenantSlug === "northstar" ? "#302b52" : "#17324d",
+      }
     : {
-        name: "Emilda Governance OS",
+        name: EMILDA_PROCESS_LIBRARY,
         primary: "#145e66",
         accent: "#8bd3c7",
         navy: "#17324d",
       };
+  const demoUser = findAllowedUser(
+    (await cookies()).get(DEMO_USER_COOKIE)?.value,
+  );
   let viewer = supabase
     ? { name: "Emilda user", role: "Team member" }
-    : { name: "Aishwarya Menon", role: "Client Owner" };
+    : demoUser
+      ? { name: demoUser.name, role: demoUser.role }
+      : { name: "Paul", role: "Owner" };
   let supportAccess: { reason: string; expiresAt: string } | null = null;
 
   if (shellContext) {
@@ -133,7 +136,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         ? "Employee"
         : displayRole("Employee", user.email);
 
-      viewer = { name, role };
+      viewer = {
+        name: findAllowedUser(user.email)?.name ?? name,
+        role: displayRole(role, user.email),
+      };
     }
   }
   const tenantStyle = {

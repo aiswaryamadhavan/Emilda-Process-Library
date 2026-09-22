@@ -3,10 +3,10 @@ import "server-only";
 import { headers } from "next/headers";
 
 import {
-  processes as demoProcesses,
-  purchaseApprovalGraph,
-  weeklyScorecardGraph,
-} from "@/lib/demo-data";
+  getDemoProcessWorkspace,
+  listDemoProcessSummaries,
+} from "@/lib/demo-process-store";
+import { resolveDemoTenantSlug } from "@/lib/demo-tenant";
 import type { ProcessGraph } from "@/lib/domain/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -30,6 +30,11 @@ export type ProcessWorkspace = ProcessSummary & {
   trigger: string;
   currentState: string;
   futureState: string;
+  guardian: string;
+  problemSolved: string;
+  auditDuration: string;
+  auditQuestions: string;
+  endingPoint: string;
   graph: ProcessGraph;
   metrics: { id: string; name: string; target: string; cadence: string }[];
   exceptions: {
@@ -117,16 +122,14 @@ async function membershipNames(
   );
 }
 
-function demoSummaries(): ProcessSummary[] {
-  return demoProcesses.map((process) => ({
-    ...process,
-    versionId: "demo",
-  }));
-}
-
 export async function getProcessSummaries(): Promise<ProcessSummary[]> {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return demoSummaries();
+  if (!supabase) {
+    const requestHeaders = await headers();
+    const tenantSlug =
+      requestHeaders.get("x-tenant-slug") ?? (await resolveDemoTenantSlug());
+    return listDemoProcessSummaries(tenantSlug);
+  }
   const tenantId = await requestTenantId(supabase);
   if (!tenantId) return [];
 
@@ -166,50 +169,17 @@ export async function getProcessSummaries(): Promise<ProcessSummary[]> {
   }));
 }
 
-function demoWorkspace(processId: string): ProcessWorkspace | null {
-  const process = demoSummaries().find((item) => item.id === processId);
-  if (!process) return null;
-  const graph =
-    processId === "purchase-approval"
-      ? purchaseApprovalGraph
-      : weeklyScorecardGraph;
-  return {
-    ...process,
-    goal: "Work is completed on time, with visible ownership and evidence.",
-    trigger: "A valid request is received.",
-    currentState: "The current method depends on manual follow-up.",
-    futureState: "The agreed process makes ownership and evidence visible.",
-    graph,
-    metrics: [
-      {
-        id: "demo-metric",
-        name: "Completed on time",
-        target: "95% within the agreed SLA",
-        cadence: "Weekly",
-      },
-    ],
-    exceptions: [],
-    openIssues: [],
-    versions: [
-      {
-        id: "demo",
-        label: process.version,
-        status: process.status,
-        changeReason: "Demo process version",
-        createdAt: "12 Sep",
-      },
-    ],
-    resourceLinks: [],
-    htmlMap: null,
-  };
-}
-
 export async function getProcessWorkspace(
   processId: string,
   requestedVersionId?: string,
 ): Promise<ProcessWorkspace | null> {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return demoWorkspace(processId);
+  if (!supabase) {
+    const requestHeaders = await headers();
+    const tenantSlug =
+      requestHeaders.get("x-tenant-slug") ?? (await resolveDemoTenantSlug());
+    return getDemoProcessWorkspace(tenantSlug, processId);
+  }
   const tenantId = await requestTenantId(supabase);
   if (!tenantId) return null;
   const admin = createSupabaseAdminClient();
@@ -385,6 +355,14 @@ export async function getProcessWorkspace(
     trigger: version.trigger_description ?? "Trigger to confirm.",
     currentState: version.current_state ?? "Current state to confirm.",
     futureState: version.future_state ?? "Future state to confirm.",
+    guardian: "Process Guardian",
+    problemSolved: version.current_state ?? "",
+    auditDuration:
+      metricsResult.data?.[0]?.cadence ?? process.next_audit_at
+        ? "Scheduled"
+        : "To confirm",
+    auditQuestions: "Captured in the process design workspace.",
+    endingPoint: version.future_state ?? "Ending point to confirm.",
     graph,
     metrics: (metricsResult.data ?? []).map((metric) => ({
       id: metric.id,

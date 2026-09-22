@@ -1,89 +1,91 @@
-import { ArrowRight, CalendarCheck, CircleAlert, FileText } from "lucide-react";
-import { AppShell } from "@/components/app-shell";
-import { TenantLink } from "@/components/tenant-link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { ArrowRight, CalendarClock, ClipboardCheck } from "lucide-react";
 
-const work = [
-  {
-    icon: CalendarCheck,
-    eyebrow: "Audit · due today",
-    title: "Weekly Scorecard",
-    detail: "4 of 7 checkpoints complete",
-    action: "Continue audit",
-    href: "/audits/scorecard-week-38",
-    tone: "bg-amber-50 text-amber-900",
-  },
-  {
-    icon: CircleAlert,
-    eyebrow: "Critical issue",
-    title: "Invoice approval delays",
-    detail: "Repeated for 3 audits",
-    action: "Review issue",
-    href: "/issues/invoice-delay",
-    tone: "bg-red-50 text-red-900",
-  },
-  {
-    icon: FileText,
-    eyebrow: "Governance note",
-    title: "September note",
-    detail: "Draft ready to publish",
-    action: "Review note",
-    href: "/governance-notes/september",
-    tone: "bg-teal-50 text-teal-900",
-  },
-];
-export default function GovernancePage() {
+import { AppShell } from "@/components/app-shell";
+import { HealthBadge } from "@/components/health-badge";
+import { TenantLink } from "@/components/tenant-link";
+import { Card, CardContent } from "@/components/ui/card";
+import { getGovernanceOverview } from "@/lib/data/governance";
+
+export default async function GovernancePage() {
+  const rows = await getGovernanceOverview();
+
   return (
     <AppShell
       title="Governance"
-      description="Observe, detect, correct, and improve—without running the client’s process for them."
+      description="Review cadence, due dates, and findings for every process in the library."
     >
-      <p className="eyebrow">Today</p>
-      <div className="mt-4 grid gap-4">
-        {work.map(({ icon: Icon, ...item }) => (
-          <Card key={item.title} className="shadow-none">
-            <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center">
-              <div
-                className={`grid size-12 shrink-0 place-items-center rounded-xl ${item.tone}`}
-              >
-                <Icon />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="eyebrow">{item.eyebrow}</p>
-                <h2 className="mt-1 text-lg font-semibold text-[var(--navy)]">
-                  {item.title}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {item.detail}
-                </p>
-              </div>
-              <Button
-                asChild
-                variant="outline"
-                className="min-h-11 w-full rounded-xl sm:w-auto"
-              >
-                <TenantLink href={item.href}>
-                  {item.action}
-                  <ArrowRight />
-                </TenantLink>
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <div className="mt-8 flex flex-wrap gap-2">
-        <Badge variant="outline" className="rounded-full bg-white px-3 py-2">
-          2 audits due
-        </Badge>
-        <Badge variant="outline" className="rounded-full bg-white px-3 py-2">
-          3 unresolved issues
-        </Badge>
-        <Badge variant="outline" className="rounded-full bg-white px-3 py-2">
-          1 approval waiting
-        </Badge>
-      </div>
+      {rows.length === 0 ? (
+        <Card className="border-dashed bg-white shadow-none">
+          <CardContent className="grid min-h-64 place-items-center p-6 text-center">
+            <div className="max-w-md">
+              <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[var(--accent)] text-[var(--accent-foreground)]">
+                <ClipboardCheck className="size-6" aria-hidden="true" />
+              </span>
+              <h2 className="mt-4 text-xl font-semibold">
+                No governance records yet
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Create a process first. Each process will appear here with its
+                governance due date and findings.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {rows.map((row) => (
+            <Card key={row.processId} className="bg-white shadow-none">
+              <CardContent className="p-5 sm:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <HealthBadge status={row.health} />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {row.department}
+                      </span>
+                    </div>
+                    <h2 className="mt-2 text-xl font-semibold text-[var(--navy)]">
+                      {row.processName}
+                    </h2>
+                  </div>
+                  <TenantLink
+                    href={`/processes/${row.processId}`}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-sm font-medium hover:bg-muted/40"
+                  >
+                    Open process
+                    <ArrowRight className="size-4" />
+                  </TenantLink>
+                </div>
+                <div className="mt-5 grid gap-4 border-t pt-4 sm:grid-cols-3">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <CalendarClock className="size-3.5" />
+                      Last governance
+                    </p>
+                    <p className="mt-1 text-sm font-semibold">
+                      {row.lastGovernance}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Next due
+                    </p>
+                    <p className="mt-1 text-sm font-semibold">{row.nextDue}</p>
+                  </div>
+                  <div className="sm:col-span-1">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Findings
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {row.findings}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </AppShell>
   );
 }

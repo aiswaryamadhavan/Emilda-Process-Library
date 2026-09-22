@@ -1,16 +1,26 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import { FocusShell } from "@/components/focus-shell";
+import {
+  canCreateProcesses,
+  DEMO_USER_COOKIE,
+} from "@/lib/allowed-users";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ProcessStarter } from "./process-starter";
 
 export default async function NewProcessPage() {
   const requestHeaders = await headers();
+  const tenantPathPrefix = requestHeaders.get("x-tenant-path-prefix") ?? "";
   const tenantSlug = requestHeaders.get("x-tenant-slug") ?? "acme";
   const supabase = await createSupabaseServerClient();
-  let departments =
-    tenantSlug === "acme"
-      ? ["Operations", "Finance", "Fulfilment", "Sales"]
-      : ["Operations"];
+  const demoEmail = (await cookies()).get(DEMO_USER_COOKIE)?.value;
+
+  if (!supabase && !canCreateProcesses(demoEmail)) {
+    redirect(`${tenantPathPrefix}/processes`);
+  }
+
+  let departments = ["Operations", "Finance", "Fulfilment", "Sales"];
 
   if (supabase) {
     const tenantId = requestHeaders.get("x-tenant-id");

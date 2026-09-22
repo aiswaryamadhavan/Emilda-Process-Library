@@ -24,11 +24,6 @@ import type {
   ProcessStarterInput,
 } from "@/lib/domain/process-starter";
 
-const steps = [
-  ["Process details", "Six essentials"],
-  ["Templates", "Optional links"],
-  ["Process map", "Upload HTML"],
-] as const;
 const emptyInput: ProcessStarterInput = {
   name: "",
   department: "Operations",
@@ -44,8 +39,14 @@ const emptyInput: ProcessStarterInput = {
   exceptions: "",
   cadence: "",
   constraints: "",
+  auditQuestions: "",
   resourceLinks: [],
 };
+const steps = [
+  ["Process setup", "Goals, ownership, and governance"],
+  ["Templates", "Save useful links"],
+  ["Process map", "Upload HTML"],
+] as const;
 const isHtmlFile = (file: File) =>
   file.type === "text/html" || /\.html?$/i.test(file.name);
 
@@ -76,18 +77,23 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
   const valid = [
     input.name.trim().length >= 2 &&
       input.goal.trim().length >= 5 &&
+      input.problem.trim().length >= 5 &&
       input.ownerRole.trim().length >= 2 &&
       guardianName.trim().length >= 2 &&
       input.trigger.trim().length >= 2 &&
-      input.output.trim().length >= 2,
+      input.output.trim().length >= 2 &&
+      input.cadence.trim().length >= 2 &&
+      input.auditQuestions.trim().length >= 5,
     input.resourceLinks.every(
-      (item) => item.label.trim().length >= 2 && /^https?:\/\//i.test(item.url),
+      (item) =>
+        !item.label.trim() ||
+        (item.label.trim().length >= 2 && /^https?:\/\//i.test(item.url)),
     ),
     Boolean(htmlFile),
   ][step];
   const hint = [
-    "Add the process name, goal, owner, guardian, trigger, and ending.",
-    "Complete each template name and link, or remove the empty row.",
+    "Add the process name, goal, problem, owner, guardian, trigger, ending, audit cadence, and audit questions.",
+    "Complete each template name and link, or remove empty rows.",
     "Attach the exported HTML process map.",
   ][step];
 
@@ -122,7 +128,7 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
 
   const buildDraft = (fileName: string): ProcessStarterDraft => ({
     purpose: input.goal,
-    businessProblem: "Captured with the uploaded HTML process map.",
+    businessProblem: input.problem,
     goal: input.goal,
     trigger: input.trigger,
     inScope: "The workflow shown in the uploaded HTML process map.",
@@ -133,9 +139,9 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
     output: input.output,
     metrics: [
       {
-        name: "Process map available",
-        target: "HTML map attached to the Process Library record",
-        cadence: "When the process changes",
+        name: "Governance review completed",
+        target: input.auditQuestions.slice(0, 280),
+        cadence: input.cadence,
         dataSource: fileName,
       },
     ],
@@ -170,6 +176,7 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
     const result = await createProcessFromStarter({
       input,
       draft: buildDraft(htmlFile.name),
+      guardianName,
     });
     if (!result.ok || !result.processId || !result.versionId) {
       setCreating(false);
@@ -259,18 +266,41 @@ export function ProcessStarter({ departments }: { departments: string[] }) {
             />
             <Field
               id="ending"
-              label="What is the ending?"
+              label="What is the ending point?"
               value={input.output}
               onChange={(value) => update("output", value)}
               placeholder="What does complete look like?"
+            />
+            <Field
+              id="problem"
+              label="What problem are we solving?"
+              value={input.problem}
+              onChange={(value) => update("problem", value)}
+              placeholder="Describe the business pain this process fixes."
+              multiline
+            />
+            <Field
+              id="cadence"
+              label="What is the auditing duration?"
+              value={input.cadence}
+              onChange={(value) => update("cadence", value)}
+              placeholder="e.g. Weekly, Monthly, Quarterly"
+            />
+            <Field
+              id="audit-questions"
+              label="What are the auditing questions?"
+              value={input.auditQuestions}
+              onChange={(value) => update("auditQuestions", value)}
+              placeholder="List the checkpoints you will review during governance."
+              multiline
             />
           </div>
         )}
         {step === 1 && (
           <div className="mt-5">
             <p className="text-sm leading-6 text-muted-foreground">
-              Add Google Docs, Google Sheets, messages, or any other useful
-              template. This step is optional.
+              Add message templates, document templates, Google Docs, Google
+              Sheets, or any other useful link. This step is optional.
             </p>
             <div className="mt-5 space-y-3">
               {input.resourceLinks.map((template, index) => (

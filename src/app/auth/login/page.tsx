@@ -2,17 +2,23 @@ import { ShieldCheck } from "lucide-react";
 import type { CSSProperties } from "react";
 import { headers } from "next/headers";
 
+import { EMILDA_PROCESS_LIBRARY } from "@/lib/branding";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { tenantPortalPath } from "@/lib/tenant";
 import { AuthLogin } from "./auth-login";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
   const supabase = await createSupabaseServerClient();
   const requestHeaders = await headers();
   const explicitTenantSlug = requestHeaders.get("x-tenant-slug");
   const tenantPathPrefix = requestHeaders.get("x-tenant-path-prefix") ?? "";
   const requestHost = requestHeaders.get("host");
-  const defaultDestination = explicitTenantSlug
+  const { next } = await searchParams;
+  const fallbackDestination = explicitTenantSlug
     ? tenantPortalPath(
         explicitTenantSlug,
         requestHost,
@@ -20,21 +26,18 @@ export default async function LoginPage() {
         process.env.TENANT_PATH_HOST,
       )
     : tenantPathPrefix
-      ? `${tenantPathPrefix}/`
-      : "/";
+      ? `${tenantPathPrefix}/processes`
+      : "/processes";
+  const defaultDestination =
+    next && next.startsWith("/") && !next.startsWith("//")
+      ? next
+      : fallbackDestination;
   const tenantSlug = explicitTenantSlug ?? (supabase ? "" : "acme");
-  let tenant = tenantSlug
-    ? {
-        name:
-          tenantSlug === "northstar" ? "Northstar Services" : "Acme Operations",
-        primary: tenantSlug === "northstar" ? "#5b4fa3" : "#1f6d62",
-        accent: tenantSlug === "northstar" ? "#9b8ce0" : "#74d1bf",
-      }
-    : {
-        name: "Emilda Governance OS",
-        primary: "#145e66",
-        accent: "#8bd3c7",
-      };
+  let tenant = {
+    name: EMILDA_PROCESS_LIBRARY,
+    primary: "#1f6d62",
+    accent: "#74d1bf",
+  };
   if (supabase && tenantSlug) {
     const { data } = await supabase
       .rpc("get_tenant_login_branding", { p_slug: tenantSlug })
@@ -46,7 +49,7 @@ export default async function LoginPage() {
         accent_color: string;
       };
       tenant = {
-        name: branding.tenant_name,
+        name: EMILDA_PROCESS_LIBRARY,
         primary: branding.primary_color,
         accent: branding.accent_color,
       };
@@ -76,7 +79,10 @@ export default async function LoginPage() {
             ? "See what needs attention and keep agreed processes working."
             : "Create clients, give people access, and govern every important process from one calm workspace."}
         </p>
-        <AuthLogin defaultDestination={defaultDestination} />
+        <AuthLogin
+          defaultDestination={defaultDestination}
+          demoMode={!supabase}
+        />
         <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="size-4" />
           Your tenant and permissions are checked on every request.

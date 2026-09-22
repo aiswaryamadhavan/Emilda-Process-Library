@@ -167,6 +167,42 @@ export function tenantPortalPath(
   return `/t/${slug}/`;
 }
 
+export function tenantPortalPathWithSuffix(
+  slug: string,
+  suffixPath: string,
+  host: string | null,
+  rootDomain = "emildaos.com",
+  tenantPathHost = "gov.emilda.co",
+) {
+  const base = tenantPortalPath(slug, host, rootDomain, tenantPathHost);
+  const suffix =
+    suffixPath.startsWith("/") || suffixPath === ""
+      ? suffixPath || "/"
+      : `/${suffixPath}`;
+  if (suffix === "/") return base;
+  if (base === "/") return suffix;
+  const baseTrimmed = base.endsWith("/") ? base.slice(0, -1) : base;
+  return `${baseTrimmed}${suffix}`;
+}
+
+/** Prefix for Process/Governance links on platform admin pages (requires DEFAULT_TENANT_SLUG). */
+export function platformNavPrefix(
+  host: string | null,
+  defaultTenantSlug: string | undefined,
+  rootDomain = "emildaos.com",
+  tenantPathHost = "gov.emilda.co",
+) {
+  if (!defaultTenantSlug || !validTenantSlug(defaultTenantSlug)) return "";
+  const base = tenantPortalPath(
+    defaultTenantSlug,
+    host,
+    rootDomain,
+    tenantPathHost,
+  );
+  if (base === "/") return "";
+  return base.endsWith("/") ? base.slice(0, -1) : base;
+}
+
 export function stripTenantPathPrefix(pathname: string, pathPrefix: string) {
   return stripExactPrefix(pathname, pathPrefix);
 }

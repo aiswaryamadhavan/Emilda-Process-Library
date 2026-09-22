@@ -1,6 +1,12 @@
 import "server-only";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
+import {
+  canCreateProcesses,
+  DEMO_USER_COOKIE,
+} from "@/lib/allowed-users";
+import { getDemoProcessWorkspace } from "@/lib/demo-process-store";
+import { resolveDemoTenantSlug } from "@/lib/demo-tenant";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 const processIds: Record<string, string> = {
   "weekly-scorecard": "50000000-0000-4000-8000-000000000001",
@@ -37,7 +43,12 @@ async function tenantId() {
 }
 export async function requireProcessAccess(slug: string) {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return;
+  if (!supabase) {
+    const tenantSlug = await resolveDemoTenantSlug();
+    const workspace = await getDemoProcessWorkspace(tenantSlug, slug);
+    if (!workspace) notFound();
+    return;
+  }
   const id = processIds[slug] ?? slug;
   const tenant = await tenantId();
   if (!tenant) notFound();
@@ -51,7 +62,9 @@ export async function requireProcessAccess(slug: string) {
 }
 export async function canDesignProcess(slug: string) {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return true;
+  if (!supabase) {
+    return canCreateProcesses((await cookies()).get(DEMO_USER_COOKIE)?.value);
+  }
   const id = processIds[slug] ?? slug;
   const { data } = await supabase.rpc("can_design_process_action", {
     p_process_id: id,

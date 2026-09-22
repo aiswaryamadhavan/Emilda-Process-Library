@@ -1,6 +1,11 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  DEMO_USER_COOKIE,
+  findAllowedUser,
+  isAllowedLoginEmail,
+} from "@/lib/allowed-users";
+import {
   createTenantContextCookie,
   readTenantContextCookie,
   tenantContextCookieName,
@@ -59,6 +64,9 @@ export async function proxy(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const contextSecret = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   const cookieUpdates: CookieUpdate[] = [];
+  const publicPath =
+    canonicalPath.startsWith("/auth/") ||
+    canonicalPath === "/manifest.webmanifest";
   if (url && key) {
     const supabase = createServerClient(url, key, {
       cookies: {
@@ -69,9 +77,18 @@ export async function proxy(request: NextRequest) {
       },
     });
     const { data } = await supabase.auth.getClaims();
-    const publicPath =
-      canonicalPath.startsWith("/auth/") ||
-      canonicalPath === "/manifest.webmanifest";
+    const claimEmail = String(data?.claims?.email ?? "");
+    if (
+      data?.claims &&
+      claimEmail &&
+      !isAllowedLoginEmail(claimEmail) &&
+      !publicPath
+    ) {
+      const login = request.nextUrl.clone();
+      login.pathname = "/auth/error";
+      login.searchParams.set("reason", "not_allowed");
+      return applyCookies(NextResponse.redirect(login), cookieUpdates);
+    }
     if (!data?.claims && !publicPath) {
       if (canonicalPath.startsWith("/api/"))
         return Response.json(
@@ -136,6 +153,18 @@ export async function proxy(request: NextRequest) {
         encodeTenantShellContext(shellContext),
       );
     }
+  } else if (
+    !publicPath &&
+    !findAllowedUser(request.cookies.get(DEMO_USER_COOKIE)?.value)
+  ) {
+    if (canonicalPath.startsWith("/api/"))
+      return Response.json({ error: "Sign in to continue." }, { status: 401 });
+    const login = request.nextUrl.clone();
+    login.pathname = tenantRoute?.pathPrefix
+      ? `${tenantRoute.pathPrefix}/auth/login`
+      : "/auth/login";
+    login.searchParams.set("next", request.nextUrl.pathname);
+    return NextResponse.redirect(login);
   }
   const response = applyCookies(
     routeResponse(request, requestHeaders, canonicalPath),

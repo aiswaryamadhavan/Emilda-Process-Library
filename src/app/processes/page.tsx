@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { ArrowRight, Building2, CalendarClock, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { HealthBadge } from "@/components/health-badge";
@@ -5,10 +6,25 @@ import { TenantForm, TenantLink } from "@/components/tenant-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  canCreateProcesses,
+  DEMO_USER_COOKIE,
+} from "@/lib/allowed-users";
 import { getProcessSummaries } from "@/lib/data/processes";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function ProcessesPage() {
   const processes = await getProcessSummaries();
+  const supabase = await createSupabaseServerClient();
+  const demoEmail = (await cookies()).get(DEMO_USER_COOKIE)?.value;
+  let userEmail = demoEmail;
+  if (supabase) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    userEmail = user?.email ?? demoEmail;
+  }
+  const canCreate = canCreateProcesses(userEmail);
   const groups = processes.reduce<Record<string, (typeof processes)[number][]>>(
     (result, process) => {
       (result[process.department] ??= []).push(process);
@@ -21,12 +37,14 @@ export default async function ProcessesPage() {
       title="Processes"
       description="The agreed way work runs—and the evidence that it is working."
       action={
-        <Button asChild className="hidden min-h-11 rounded-xl sm:inline-flex">
-          <TenantLink href="/processes/new">
-            <Plus />
-            Create process
-          </TenantLink>
-        </Button>
+        canCreate ? (
+          <Button asChild className="hidden min-h-11 rounded-xl sm:inline-flex">
+            <TenantLink href="/processes/new">
+              <Plus />
+              Create process
+            </TenantLink>
+          </Button>
+        ) : undefined
       }
     >
       <TenantForm action="/search">
@@ -65,15 +83,18 @@ export default async function ProcessesPage() {
                 </span>
                 <h2 className="mt-4 text-xl font-semibold">No processes yet</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Start with one important recurring process. Answer practical
-                  questions and Emilda will create an editable starting map.
+                  {canCreate
+                    ? "Start with one important recurring process. Add the essentials, templates, and the HTML process map."
+                    : "Processes will appear here after Aishwarya adds them to the library."}
                 </p>
-                <Button asChild className="mt-5 min-h-11">
-                  <TenantLink href="/processes/new">
-                    <Plus />
-                    Create first process
-                  </TenantLink>
-                </Button>
+                {canCreate && (
+                  <Button asChild className="mt-5 min-h-11">
+                    <TenantLink href="/processes/new">
+                      <Plus />
+                      Create first process
+                    </TenantLink>
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -145,16 +166,18 @@ export default async function ProcessesPage() {
           </section>
         ))}
       </div>
-      <Button
-        asChild
-        size="lg"
-        className="fixed bottom-24 right-4 min-h-12 rounded-full shadow-lg sm:hidden"
-      >
-        <TenantLink href="/processes/new">
-          <Plus />
-          Create process
-        </TenantLink>
-      </Button>
+      {canCreate && (
+        <Button
+          asChild
+          size="lg"
+          className="fixed bottom-24 right-4 min-h-12 rounded-full shadow-lg sm:hidden"
+        >
+          <TenantLink href="/processes/new">
+            <Plus />
+            Create process
+          </TenantLink>
+        </Button>
+      )}
     </AppShell>
   );
 }

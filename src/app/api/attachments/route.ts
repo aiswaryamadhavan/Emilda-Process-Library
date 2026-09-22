@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { z } from "zod";
 
+import { attachDemoHtmlMap } from "@/lib/demo-process-store";
+import { resolveDemoTenantSlug } from "@/lib/demo-tenant";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveTenantRoute } from "@/lib/tenant";
@@ -88,13 +90,26 @@ export async function POST(request: Request) {
     );
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
-  if (!supabase || !admin)
+  if (!supabase || !admin) {
+    const attachmentId = randomUUID();
+    const tenantSlug = await resolveDemoTenantSlug();
+    if (parsed.data.entityType === "VERSION") {
+      await attachDemoHtmlMap(
+        tenantSlug,
+        parsed.data.processId,
+        parsed.data.entityId,
+        attachmentId,
+        file.name,
+        new TextDecoder().decode(bytes),
+      );
+    }
     return Response.json({
-      id: `demo-${randomUUID()}`,
+      id: attachmentId,
       filename: file.name,
       status: "AVAILABLE",
       demo: true,
     });
+  }
 
   const requestHeaders = await headers();
   const proxyTenantId = z

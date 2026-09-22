@@ -1,8 +1,14 @@
 "use server";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import {
+  canCreateProcesses,
+  DEMO_USER_COOKIE,
+} from "@/lib/allowed-users";
+import { createDemoProcessFromStarter } from "@/lib/demo-process-store";
+import { demoTenantId, resolveDemoTenantSlug } from "@/lib/demo-tenant";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveTenantRoute, tenantPortalPath } from "@/lib/tenant";
 import { processGraphSchema } from "@/lib/domain/types";
@@ -227,13 +233,27 @@ export async function openPlatformTenant(formData: FormData) {
 
 async function resolveCurrentTenant() {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { supabase: null, tenantId: null };
+  if (!supabase) {
+    const tenantSlug = await resolveDemoTenantSlug();
+    return {
+      supabase: null,
+      tenantId: demoTenantId(tenantSlug),
+      tenantSlug,
+      demo: true as const,
+    };
+  }
   const requestHeaders = await headers();
   const proxyTenantId = z
     .string()
     .uuid()
     .safeParse(requestHeaders.get("x-tenant-id"));
-  if (proxyTenantId.success) return { supabase, tenantId: proxyTenantId.data };
+  if (proxyTenantId.success)
+    return {
+      supabase,
+      tenantId: proxyTenantId.data,
+      tenantSlug: requestHeaders.get("x-tenant-slug"),
+      demo: false as const,
+    };
   let tenantSlug = requestHeaders.get("x-tenant-slug");
   // Server Actions are posted by Next.js and do not always retain the proxy's
   // custom tenant header. The same-origin referrer still contains the tenant
@@ -255,13 +275,18 @@ async function resolveCurrentTenant() {
       }
     }
   }
-  if (!tenantSlug) return { supabase, tenantId: null };
+  if (!tenantSlug) return { supabase, tenantId: null, tenantSlug: null, demo: false as const };
   const { data } = await supabase
     .from("tenants")
     .select("id")
     .eq("slug", tenantSlug)
     .maybeSingle();
-  return { supabase, tenantId: data?.id ?? null };
+  return {
+    supabase,
+    tenantId: data?.id ?? null,
+    tenantSlug,
+    demo: false as const,
+  };
 }
 
 const profileUpdateSchema = z.object({
@@ -336,6 +361,7 @@ export async function inviteTenantUser(input: unknown) {
 const starterCreationSchema = z.object({
   input: processStarterInputSchema,
   draft: processStarterDraftSchema,
+  guardianName: z.string().trim().min(2).max(120),
 });
 
 export async function createProcessFromStarter(input: unknown) {
@@ -346,8 +372,29 @@ export async function createProcessFromStarter(input: unknown) {
       error:
         "The starting draft is incomplete. Generate it again and review the result.",
     };
-  const { supabase, tenantId } = await resolveCurrentTenant();
-  if (!supabase || !tenantId)
+  const { supabase, tenantId, tenantSlug, demo } = await resolveCurrentTenant();
+  if (!tenantId || !tenantSlug)
+    return { ok: false, error: "Client portal could not be verified." };
+
+  if (demo) {
+    const userEmail = (await cookies()).get(DEMO_USER_COOKIE)?.value;
+    if (!canCreateProcesses(userEmail)) {
+      return {
+        ok: false,
+        error: "Only Aishwarya can create processes right now.",
+      };
+    }
+    const created = await createDemoProcessFromStarter(
+      tenantSlug,
+      parsed.data.input,
+      parsed.data.draft,
+      parsed.data.guardianName,
+    );
+    revalidatePath("/processes");
+    return { ok: true, ...created };
+  }
+
+  if (!supabase)
     return { ok: false, error: "Client portal could not be verified." };
   const { data, error } = await supabase.rpc("create_process_from_starter", {
     p_tenant_id: tenantId,

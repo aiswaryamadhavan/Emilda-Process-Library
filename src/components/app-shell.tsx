@@ -2,34 +2,20 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Bell,
-  Building2,
-  ClipboardCheck,
-  FolderKanban,
-  Home,
-  LogOut,
-  Search,
-  Settings2,
-  UserRound,
-} from "lucide-react";
+import { ClipboardCheck, FolderKanban, LogOut, UserRound } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useTenantTheme } from "@/components/tenant-provider";
 import { Button } from "@/components/ui/button";
+import { EMILDA_PROCESS_LIBRARY } from "@/lib/branding";
 import { stripTenantPathPrefix } from "@/lib/tenant";
 
 const nav = [
-  { label: "Home", href: "/", icon: Home },
-  { label: "Processes", href: "/processes", icon: FolderKanban },
+  { label: "Process", href: "/processes", icon: FolderKanban },
   { label: "Governance", href: "/governance", icon: ClipboardCheck },
-  { label: "Search", href: "/search", icon: Search },
-  { label: "More", href: "/more", icon: Settings2 },
 ];
 
-const platformNav = [
-  { label: "Clients", href: "/admin/tenants", icon: Building2 },
-];
+const platformNav = nav;
 
 type Viewer = { name: string; role: string };
 
@@ -40,6 +26,7 @@ export function AppShell({
   action,
   viewer,
   mode = "tenant",
+  platformTenantPrefix = "",
 }: {
   children: ReactNode;
   title: string;
@@ -47,6 +34,8 @@ export function AppShell({
   action?: ReactNode;
   viewer?: Viewer;
   mode?: "tenant" | "platform";
+  /** e.g. `/emilda-co` on gov.emilda.co when DEFAULT_TENANT_SLUG is set */
+  platformTenantPrefix?: string;
 }) {
   const router = useRouter();
   const [pendingNavigation, setPendingNavigation] = useState<{
@@ -54,25 +43,27 @@ export function AppShell({
     fromPathname: string;
   } | null>(null);
   const tenant = useTenantTheme();
-  const { name: tenantName, localPrefix, supportAccess } = tenant;
+  const { name: tenantName, localPrefix } = tenant;
   const pathname = stripTenantPathPrefix(usePathname(), localPrefix);
   const displayedViewer = viewer ?? tenant.viewer;
   const navigation = mode === "platform" ? platformNav : nav;
-  const tenantHref = (href: string) =>
-    mode === "platform" ? href : `${localPrefix}${href === "/" ? "/" : href}`;
+  const tenantHref = (href: string) => {
+    if (mode === "platform") {
+      return platformTenantPrefix
+        ? `${platformTenantPrefix}${href}`
+        : href;
+    }
+    return `${localPrefix}${href === "/" ? "/" : href}`;
+  };
   const active = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   useEffect(() => {
     const destinations = mode === "platform" ? platformNav : nav;
     destinations.forEach(({ href }) =>
-      router.prefetch(
-        mode === "platform"
-          ? href
-          : `${localPrefix}${href === "/" ? "/" : href}`,
-      ),
+      router.prefetch(tenantHref(href)),
     );
-  }, [localPrefix, mode, router]);
+  }, [localPrefix, mode, platformTenantPrefix, router]);
 
   const startNavigation = (href: string) => {
     if (!active(href)) setPendingNavigation({ href, fromPathname: pathname });
@@ -103,7 +94,7 @@ export function AppShell({
 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-foreground)] md:flex">
         <Link
-          href={mode === "platform" ? "/admin/tenants" : tenantHref("/")}
+          href={tenantHref("/processes")}
           className="flex min-h-20 items-center gap-3 border-b border-[var(--sidebar-border)] px-5"
         >
           <span className="grid size-10 place-items-center rounded-xl bg-[var(--brand-primary)] text-base font-bold text-white shadow-sm">
@@ -114,7 +105,7 @@ export function AppShell({
               Emilda
             </span>
             <span className="block truncate text-xs text-muted-foreground">
-              {mode === "platform" ? "Platform administration" : tenantName}
+              {EMILDA_PROCESS_LIBRARY}
             </span>
           </span>
         </Link>
@@ -154,28 +145,16 @@ export function AppShell({
             </span>
           </div>
           {mode === "tenant" && (
-            <div className="mt-1 grid grid-cols-2 gap-1">
-              <form action={tenantHref("/auth/sign-out")} method="post">
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  className="min-h-10 w-full justify-start gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <UserRound className="size-3.5" aria-hidden="true" />
-                  Change user
-                </Button>
-              </form>
-              <form action={tenantHref("/auth/sign-out")} method="post">
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  className="min-h-10 w-full justify-start gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <LogOut className="size-3.5" aria-hidden="true" />
-                  Log out
-                </Button>
-              </form>
-            </div>
+            <form action={tenantHref("/auth/sign-out")} method="post">
+              <Button
+                type="submit"
+                variant="ghost"
+                className="mt-1 min-h-10 w-full justify-start gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="size-3.5" aria-hidden="true" />
+                Log out
+              </Button>
+            </form>
           )}
         </div>
       </aside>
@@ -187,7 +166,7 @@ export function AppShell({
         <header className="flex items-start justify-between gap-4 border-b border-border/80 pb-6">
           <div className="min-w-0">
             <p className="mb-1 text-xs font-medium text-muted-foreground md:hidden">
-              {tenantName}
+              {EMILDA_PROCESS_LIBRARY}
             </p>
             <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.04em] text-foreground sm:text-[2rem]">
               {title}
@@ -198,55 +177,14 @@ export function AppShell({
               </p>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {mode === "tenant" && (
-              <>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="icon"
-                  className="rounded-xl bg-white shadow-none"
-                >
-                  <Link href={tenantHref("/search")} aria-label="Search">
-                    <Search className="size-[18px]" />
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="icon"
-                  className="hidden rounded-xl bg-white shadow-none sm:inline-flex"
-                >
-                  <Link
-                    href={tenantHref("/more/notifications")}
-                    aria-label="Notifications"
-                  >
-                    <Bell className="size-[18px]" />
-                  </Link>
-                </Button>
-              </>
-            )}
-            {action}
-          </div>
+          <div className="flex shrink-0 items-center gap-2">{action}</div>
         </header>
-        {mode === "tenant" && supportAccess && (
-          <div
-            role="status"
-            className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-          >
-            <span className="font-semibold">
-              Temporary setup access is active.
-            </span>{" "}
-            You have Tenant Admin access for this client while you complete
-            setup. It ends automatically and is recorded in the activity log.
-          </div>
-        )}
         <div className="mt-6 md:mt-8">{children}</div>
       </main>
 
       <nav
         aria-label="Mobile primary"
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-white/95 px-1 pb-[max(0.45rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-6px_24px_rgba(15,23,42,0.06)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 border-t border-border bg-white/95 px-1 pb-[max(0.45rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-6px_24px_rgba(15,23,42,0.06)] backdrop-blur md:hidden"
       >
         {navigation.map(({ label, href, icon: Icon }) => (
           <Link

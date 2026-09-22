@@ -7,52 +7,21 @@ async function hideDevelopmentChrome(page: import("@playwright/test").Page) {
 test("capture final delivery screenshots", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/t/acme/");
-  await expect(
-    page.getByRole("heading", { name: /Good morning/ }),
-  ).toBeVisible();
+  await page.goto("/t/acme/processes");
+  await expect(page.getByRole("heading", { name: "Processes" })).toBeVisible();
   await hideDevelopmentChrome(page);
   await page.screenshot({
     path: "docs/screenshots/mobile-owner-dashboard.png",
     fullPage: true,
   });
-  await page.goto("/t/acme/audits/scorecard-week-38");
-  await page.evaluate(() => localStorage.removeItem("emilda:audit:week38"));
-  await page.reload();
-  await hideDevelopmentChrome(page);
-  await page.screenshot({
-    path: "docs/screenshots/mobile-audit.png",
-    fullPage: true,
-  });
-  await page.goto("/t/acme/approvals/purchase-v21");
-  await page.evaluate(() =>
-    localStorage.removeItem("emilda:approval:purchase-v21"),
-  );
-  await page.reload();
-  await hideDevelopmentChrome(page);
-  await page.screenshot({
-    path: "docs/screenshots/mobile-approval.png",
-    fullPage: true,
-  });
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/t/acme/processes/purchase-approval/versions/demo/builder");
-  await expect(page.locator(".react-flow")).toBeVisible();
-  await hideDevelopmentChrome(page);
-  await page.screenshot({
-    path: "docs/screenshots/process-builder.png",
-    fullPage: true,
-  });
-  await page.goto("/t/acme/");
+  await page.goto("/t/acme/governance");
+  await expect(
+    page.getByRole("heading", { name: "No governance work yet" }),
+  ).toBeVisible();
   await hideDevelopmentChrome(page);
   await page.screenshot({
     path: "docs/screenshots/process-health-dashboard.png",
-    fullPage: true,
-  });
-
-  await page.goto("/t/acme/more/client-profile");
-  await hideDevelopmentChrome(page);
-  await page.screenshot({
-    path: "docs/screenshots/client-profile.png",
     fullPage: true,
   });
 

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { allowedUsers } from "@/lib/allowed-users";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   UserManagement,
@@ -12,9 +13,17 @@ import {
 export default async function UsersPage() {
   const tenantSlug = (await headers()).get("x-tenant-slug") ?? "acme";
   const supabase = await createSupabaseServerClient();
-  let members: TenantMemberView[] = [];
+  let members: TenantMemberView[] = allowedUsers.map((user, index) => ({
+    id: `demo-${user.email}`,
+    userId: `demo-${index + 1}`,
+    name: user.name,
+    email: user.email,
+    provider: "google",
+    roles: [user.role === "Owner" ? "PROCESS_OWNER" : "TENANT_ADMIN"],
+    status: "ACTIVE",
+  }));
   let invitations: TenantInvitationView[] = [];
-  let canInvite = true;
+  let canInvite = false;
 
   if (supabase) {
     const {

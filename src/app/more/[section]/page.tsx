@@ -6,52 +6,32 @@ const content: Record<
 > = {
   users: {
     title: "Users & roles",
-    description: "People can hold more than one tenant role.",
+    description: "Only Paul and Aishwarya can sign in right now.",
     rows: [
-      "Aishwarya Menon · Approver · Process Owner",
-      "Vishnu Rao · Process Guardian",
-      "Neha Shah · Contributor",
-      "Priya Nair · Tenant Admin",
+      "Paul · Owner · paul@emildasolutions.com",
+      "Aishwarya · Admin · aiswarya@emildasolutions.com",
     ],
   },
   branding: {
     title: "Branding",
     description: "CSS variables apply branding without a separate frontend.",
-    rows: [
-      "Portal name · Acme Operations",
-      "Primary color · Deep teal",
-      "Accent color · Mint",
-      "Sign-in provider · Google Workspace",
-    ],
+    rows: [],
   },
   access: {
     title: "Process access",
     description:
       "Access is enforced in the server and database—not by hiding links.",
-    rows: [
-      "Weekly Scorecard · Everyone",
-      "Purchase Approval · Finance + assigned approvers",
-      "Dispatch Confirmation · Fulfilment + Process Guardian",
-    ],
+    rows: [],
   },
   activity: {
     title: "Activity log",
     description: "This history cannot be edited or deleted by tenant users.",
-    rows: [
-      "Aishwarya approved Purchase Approval v2.1",
-      "Vishnu completed Weekly Scorecard Audit",
-      "Health changed from Healthy to Needs attention",
-      "Change Request #12 created v2.1 draft",
-    ],
+    rows: [],
   },
   notifications: {
     title: "Notifications",
     description: "Critical events arrive immediately; routine work is grouped.",
-    rows: [
-      "Approval requested · Purchase Approval v2.1",
-      "Audit due today · Weekly Scorecard",
-      "Critical issue opened · Invoice approval delays",
-    ],
+    rows: [],
   },
 };
 export default async function MoreSection({
@@ -74,11 +54,17 @@ export default async function MoreSection({
     <AppShell title={item.title} description={item.description}>
       <Card className="shadow-none">
         <CardContent className="divide-y p-0">
-          {item.rows.map((row) => (
-            <div key={row} className="min-h-16 p-5">
-              {row}
+          {item.rows.length === 0 ? (
+            <div className="min-h-16 p-5 text-sm text-muted-foreground">
+              Nothing recorded yet.
             </div>
-          ))}
+          ) : (
+            item.rows.map((row) => (
+              <div key={row} className="min-h-16 p-5">
+                {row}
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
     </AppShell>

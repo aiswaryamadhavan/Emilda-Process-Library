@@ -1,231 +1,28 @@
 import type { ProcessGraph, SearchHit } from "@/lib/domain/types";
 
-export const processes = [
-  {
-    id: "weekly-scorecard",
-    name: "Weekly Scorecard",
-    department: "Operations",
-    owner: "Vishnu Rao",
-    version: "1.0",
-    health: "HEALTHY",
-    lastAudit: "08 Sep",
-    nextAudit: "15 Sep",
-    status: "ACTIVE",
-    purpose:
-      "Give leadership an accurate weekly view of commitments and business performance.",
-  },
-  {
-    id: "purchase-approval",
-    name: "Purchase Approval",
-    department: "Finance",
-    owner: "Aishwarya Menon",
-    version: "2.1",
-    health: "CRITICAL",
-    lastAudit: "05 Sep",
-    nextAudit: "12 Sep",
-    status: "APPROVAL PENDING",
-    purpose:
-      "Approve necessary purchases quickly while keeping spending controlled and visible.",
-  },
-  {
-    id: "dispatch-confirmation",
-    name: "Dispatch Confirmation",
-    department: "Fulfilment",
-    owner: "Neha Shah",
-    version: "1.4",
-    health: "NEEDS_ATTENTION",
-    lastAudit: "10 Sep",
-    nextAudit: "17 Sep",
-    status: "ACTIVE",
-    purpose:
-      "Confirm every dispatch with reliable evidence before the customer is notified.",
-  },
-] as const;
+export const processes: {
+  id: string;
+  name: string;
+  department: string;
+  owner: string;
+  version: string;
+  health: "HEALTHY" | "NEEDS_ATTENTION" | "CRITICAL" | "NOT_ENOUGH_DATA";
+  lastAudit: string;
+  nextAudit: string;
+  status: string;
+  purpose: string;
+}[] = [];
 
 export const weeklyScorecardGraph: ProcessGraph = {
   direction: "LR",
-  nodes: [
-    {
-      id: "start",
-      type: "START",
-      title: "Week begins",
-      position: { x: 0, y: 80 },
-    },
-    {
-      id: "collect",
-      type: "ACTION",
-      title: "Collect metric values",
-      actor: "Process Coordinator",
-      timing: "Before Monday review",
-      evidence: "Completed scorecard",
-      position: { x: 220, y: 80 },
-    },
-    {
-      id: "verify",
-      type: "ACTION",
-      title: "Verify each metric",
-      actor: "Metric Owners",
-      timing: "Before publication",
-      position: { x: 480, y: 80 },
-    },
-    {
-      id: "complete",
-      type: "DECISION",
-      title: "All metrics complete?",
-      position: { x: 720, y: 80 },
-    },
-    {
-      id: "notify",
-      type: "HANDOFF",
-      title: "Mark missing and notify owner",
-      actor: "Process Coordinator",
-      position: { x: 720, y: 250 },
-    },
-    {
-      id: "review",
-      type: "ACTION",
-      title: "Review exceptions",
-      actor: "Operations Lead",
-      timing: "Weekly meeting",
-      position: { x: 980, y: 80 },
-    },
-    {
-      id: "end",
-      type: "END",
-      title: "Scorecard published",
-      position: { x: 1210, y: 80 },
-    },
-  ],
-  edges: [
-    { id: "e1", source: "start", target: "collect" },
-    { id: "e2", source: "collect", target: "verify" },
-    { id: "e3", source: "verify", target: "complete" },
-    { id: "e4", source: "complete", target: "review", label: "Yes" },
-    { id: "e5", source: "complete", target: "notify", label: "No" },
-    { id: "e6", source: "notify", target: "verify", label: "Updated" },
-    { id: "e7", source: "review", target: "end" },
-  ],
+  nodes: [],
+  edges: [],
 };
 
 export const purchaseApprovalGraph: ProcessGraph = {
   direction: "LR",
-  nodes: [
-    {
-      id: "start",
-      type: "START",
-      title: "Request submitted",
-      actor: "Requester",
-      position: { x: 0, y: 180 },
-    },
-    {
-      id: "request",
-      type: "ACTION",
-      title: "Create digital request",
-      actor: "Requester",
-      timing: "Before purchase",
-      evidence: "Request and quotation",
-      position: { x: 250, y: 180 },
-    },
-    {
-      id: "check",
-      type: "ACTION",
-      title: "Check amount and evidence",
-      actor: "Finance Coordinator",
-      timing: "Within 4 hours",
-      evidence: "Verified request",
-      position: { x: 500, y: 180 },
-    },
-    {
-      id: "threshold",
-      type: "DECISION",
-      title: "Below ₹25,000?",
-      actor: "System rule",
-      position: { x: 750, y: 180 },
-    },
-    {
-      id: "delegate",
-      type: "HANDOFF",
-      title: "Delegated manager approves",
-      actor: "Operations Lead",
-      timing: "Within 8 hours",
-      evidence: "Approval record",
-      position: { x: 1010, y: 60 },
-    },
-    {
-      id: "owner",
-      type: "HANDOFF",
-      title: "Client Owner approves",
-      actor: "Client Owner",
-      timing: "Within 24 hours",
-      evidence: "Approval record",
-      position: { x: 1010, y: 300 },
-    },
-    {
-      id: "record",
-      type: "DATA",
-      title: "Record decision and evidence",
-      actor: "Finance Coordinator",
-      position: { x: 1270, y: 180 },
-    },
-    {
-      id: "end",
-      type: "END",
-      title: "Requester notified",
-      position: { x: 1530, y: 180 },
-    },
-  ],
-  edges: [
-    { id: "e1", source: "start", target: "request" },
-    { id: "e2", source: "request", target: "check" },
-    { id: "e3", source: "check", target: "threshold" },
-    { id: "e4", source: "threshold", target: "delegate", label: "Yes" },
-    { id: "e5", source: "threshold", target: "owner", label: "No" },
-    { id: "e6", source: "delegate", target: "record" },
-    { id: "e7", source: "owner", target: "record" },
-    { id: "e8", source: "record", target: "end" },
-  ],
+  nodes: [],
+  edges: [],
 };
 
-export const searchHits: SearchHit[] = [
-  {
-    id: "p3",
-    type: "Process",
-    title: "Dispatch Confirmation",
-    excerpt:
-      "Confirm every dispatch with reliable evidence before notifying the customer.",
-    href: "/processes/dispatch-confirmation",
-    processId: "dispatch-confirmation",
-  },
-  {
-    id: "p1",
-    type: "Process",
-    title: "Invoice Approval",
-    excerpt: "Approves supplier invoices before payment.",
-    href: "/processes/purchase-approval",
-    processId: "purchase-approval",
-  },
-  {
-    id: "s1",
-    type: "Step",
-    title: "Finance verifies invoice",
-    excerpt: "Check PO, amount, and supplier details before manager approval.",
-    href: "/processes/purchase-approval?tab=process",
-    processId: "purchase-approval",
-  },
-  {
-    id: "i1",
-    type: "Issue",
-    title: "Invoice approvals delayed",
-    excerpt: "Approval SLA missed in three consecutive audits.",
-    href: "/issues/invoice-delay",
-    processId: "purchase-approval",
-  },
-  {
-    id: "g1",
-    type: "Governance Note",
-    title: "Invoice approval SLA exceeded",
-    excerpt: "Delegated approval below ₹25,000 is awaiting owner approval.",
-    href: "/governance-notes/september",
-    processId: "purchase-approval",
-  },
-];
+export const searchHits: SearchHit[] = [];

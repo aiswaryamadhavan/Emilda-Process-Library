@@ -1,7 +1,9 @@
 import { headers } from "next/headers";
+import { readDemoAttachment } from "@/lib/demo-process-store";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveTenantRoute } from "@/lib/tenant";
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ attachmentId: string }> },
@@ -9,11 +11,24 @@ export async function GET(
   const { attachmentId } = await params;
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
-  if (!supabase || !admin)
-    return Response.json(
-      { error: "Evidence storage is not configured." },
-      { status: 503 },
-    );
+  const inline = new URL(request.url).searchParams.get("inline") === "1";
+
+  if (!supabase || !admin) {
+    const html = await readDemoAttachment(attachmentId);
+    if (!html) {
+      return Response.json({ error: "File not found." }, { status: 404 });
+    }
+    return new Response(html, {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Disposition": inline
+          ? "inline"
+          : `attachment; filename="${attachmentId}.html"`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  }
+
   const requestHeaders = await headers();
   const proxyTenantId = requestHeaders.get("x-tenant-id");
   let tenant =
@@ -66,9 +81,7 @@ export async function GET(
     .createSignedUrl(
       file.object_path,
       60,
-      new URL(request.url).searchParams.get("inline") === "1"
-        ? undefined
-        : { download: file.filename },
+      inline ? undefined : { download: file.filename },
     );
   if (error || !data)
     return Response.json(

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { ArrowUpRight, Building2, Plus } from "lucide-react";
 import { openPlatformTenant } from "@/app/actions/process-actions";
 import { AppShell } from "@/components/app-shell";
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { platformNavPrefix } from "@/lib/tenant";
 
 type TenantSummary = {
   tenant_id: string;
@@ -18,33 +20,21 @@ type TenantSummary = {
   created_at: string;
 };
 
-const demoTenants: TenantSummary[] = [
-  {
-    tenant_id: "acme",
-    tenant_name: "Acme Operations",
-    tenant_slug: "acme",
-    tenant_status: "ACTIVE",
-    primary_color: "#1f6d62",
-    user_count: 7,
-    process_count: 3,
-    created_at: "2026-09-12T00:00:00Z",
-  },
-  {
-    tenant_id: "northstar",
-    tenant_name: "Northstar Services",
-    tenant_slug: "northstar",
-    tenant_status: "ACTIVE",
-    primary_color: "#5b4fa3",
-    user_count: 4,
-    process_count: 2,
-    created_at: "2026-09-12T00:00:00Z",
-  },
-];
+const demoTenants: TenantSummary[] = [];
 
 export default async function TenantsPage() {
   const supabase = await createSupabaseServerClient();
   const tenantPortalHost = process.env.TENANT_PATH_HOST ?? "gov.emilda.co";
-  let tenants = demoTenants;
+  const requestHeaders = await headers();
+  const requestHost =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const platformTenantPrefix = platformNavPrefix(
+    requestHost,
+    process.env.DEFAULT_TENANT_SLUG ?? "emilda-co",
+    process.env.ROOT_DOMAIN,
+    tenantPortalHost,
+  );
+  let tenants: TenantSummary[] = [];
   if (supabase) {
     const { data } = await supabase.rpc("list_platform_tenants");
     tenants = (data ?? []) as TenantSummary[];
@@ -53,6 +43,7 @@ export default async function TenantsPage() {
   return (
     <AppShell
       mode="platform"
+      platformTenantPrefix={platformTenantPrefix}
       title="Client tenants"
       description="One deployment with strictly isolated client data."
       action={

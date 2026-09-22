@@ -128,6 +128,29 @@ export default async function ProcessPage({
         </TabsList>
 
         <TabsContent value="overview" className="mt-5 space-y-4">
+          <Card>
+            <CardHeader className="border-b pb-4">
+              <p className="eyebrow">Captured during setup</p>
+              <CardTitle className="mt-1 text-lg font-semibold">
+                Process setup details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
+              <Detail label="Process goal" value={process.goal} />
+              <Detail label="Problem solved" value={process.problemSolved} />
+              <Detail label="Process owner" value={process.owner} />
+              <Detail label="Process guardian" value={process.guardian} />
+              <Detail label="Trigger" value={process.trigger} />
+              <Detail label="Ending point" value={process.endingPoint} />
+              <Detail label="Auditing duration" value={process.auditDuration} />
+              <Detail
+                label="Auditing questions"
+                value={process.auditQuestions}
+                className="sm:col-span-2"
+              />
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 md:grid-cols-2">
             <InfoCard title="Why this process exists" icon={FileCheck2}>
               {process.purpose}
@@ -413,6 +436,23 @@ function SmallFact({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border bg-white p-4">
       <p className="eyebrow">{label}</p>
       <p className="mt-2 text-sm font-medium leading-6">{value}</p>
+    </div>
+  );
+}
+
+function Detail({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm leading-6 whitespace-pre-wrap">{value || "—"}</p>
     </div>
   );
 }

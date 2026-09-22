@@ -36,6 +36,7 @@ export const processStarterInputSchema = z.object({
   exceptions: answer,
   cadence: z.string().trim().max(120),
   constraints: answer,
+  auditQuestions: z.string().trim().max(4000).default(""),
   resourceLinks: z.array(processResourceLinkInputSchema).max(20).default([]),
 });
 

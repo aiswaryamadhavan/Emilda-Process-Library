@@ -2,11 +2,13 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 
+import { EMILDA_PROCESS_LIBRARY } from "@/lib/branding";
+
 const TenantContext = createContext({
-  name: "Acme Operations",
+  name: EMILDA_PROCESS_LIBRARY,
   slug: "acme",
   localPrefix: "",
-  viewer: { name: "Aishwarya Menon", role: "Client Owner" },
+  viewer: { name: "Paul", role: "Owner" },
   supportAccess: null as { reason: string; expiresAt: string } | null,
 });
 
